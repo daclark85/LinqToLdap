@@ -5,7 +5,7 @@ using System.Linq.Expressions;
 
 namespace LinqToLdap.Visitors
 {
-    internal class BooleanRewriter : ExpressionVisitor
+    internal class BooleanRewriter : System.Linq.Expressions.ExpressionVisitor
     {
         private HashSet<Expression> _candidates;
 
@@ -30,7 +30,7 @@ namespace LinqToLdap.Visitors
             return Visit(expression);
         }
 
-        protected override Expression Visit(Expression exp)
+        public override Expression Visit(Expression exp)
         {
             if (exp == null)
             {
@@ -43,8 +43,7 @@ namespace LinqToLdap.Visitors
 
         private static Expression Evaluate(Expression e)
         {
-            bool b;
-            return ReduceToBool(e, out b);
+            return ReduceToBool(e, out _);
         }
 
         private static Expression ReduceToBool(Expression e, out bool canBeReduced)
@@ -56,12 +55,9 @@ namespace LinqToLdap.Visitors
                     return e;
 
                 case ExpressionType.Lambda:
-                    var lamda = e as LambdaExpression;
-
-                    if (lamda.Body.NodeType == ExpressionType.Conditional)
-
+                    if (e is LambdaExpression lambdaExpr && lambdaExpr.Body.NodeType == ExpressionType.Conditional)
                     {
-                        return ReduceToBool(lamda.Body, out canBeReduced);
+                        return ReduceToBool(lambdaExpr.Body, out canBeReduced);
                     }
                     canBeReduced = false;
                     return e;
@@ -80,25 +76,25 @@ namespace LinqToLdap.Visitors
                 case ExpressionType.ConvertChecked:
                 case ExpressionType.TypeAs:
 
-                    ReduceToBool((e as UnaryExpression).Operand, out canBeReduced);
+                    ReduceToBool(((UnaryExpression)e).Operand, out canBeReduced);
 
                     if (canBeReduced)
                     {
-                        LambdaExpression lambda = Expression.Lambda(e);
-                        Delegate fn = lambda.Compile();
-                        return Expression.Constant(fn.DynamicInvoke(null), e.Type);
+                        var unaryLambda = Expression.Lambda(e);
+                        var unaryFn = unaryLambda.Compile();
+                        return Expression.Constant(unaryFn.DynamicInvoke(null), e.Type);
                     }
                     break;
 
                 case ExpressionType.TypeIs:
 
-                    ReduceToBool((e as TypeBinaryExpression).Expression, out canBeReduced);
+                    ReduceToBool(((TypeBinaryExpression)e).Expression, out canBeReduced);
 
                     if (canBeReduced)
                     {
-                        LambdaExpression lambda = Expression.Lambda(e);
-                        Delegate fn = lambda.Compile();
-                        return Expression.Constant(fn.DynamicInvoke(null), e.Type);
+                        var typeIsLambda = Expression.Lambda(e);
+                        var typeIsFn = typeIsLambda.Compile();
+                        return Expression.Constant(typeIsFn.DynamicInvoke(null), e.Type);
                     }
                     break;
 
@@ -125,30 +121,27 @@ namespace LinqToLdap.Visitors
                 case ExpressionType.RightShift:
                 case ExpressionType.LeftShift:
                 case ExpressionType.ExclusiveOr:
-                    var binary = e as BinaryExpression;
-                    bool left;
+                    var binary = (BinaryExpression)e;
 
-                    ReduceToBool(binary.Left, out left);
+                    ReduceToBool(binary.Left, out bool left);
 
                     if (left)
                     {
-                        bool right;
-                        ReduceToBool(binary.Right, out right);
+                        ReduceToBool(binary.Right, out bool right);
                         if (right)
                         {
                             canBeReduced = true;
-                            LambdaExpression lambda = Expression.Lambda(e);
-                            Delegate fn = lambda.Compile();
-                            return Expression.Constant(fn.DynamicInvoke(null), e.Type);
+                            var binaryLambda = Expression.Lambda(e);
+                            var binaryFn = binaryLambda.Compile();
+                            return Expression.Constant(binaryFn.DynamicInvoke(null), e.Type);
                         }
                     }
                     break;
 
                 case ExpressionType.Conditional:
-                    var conditional = e as ConditionalExpression;
-                    bool test;
+                    var conditional = (ConditionalExpression)e;
 
-                    var constant = ReduceToBool(conditional.Test, out test) as ConstantExpression;
+                    var constant = ReduceToBool(conditional.Test, out bool test) as ConstantExpression;
 
                     if (test && constant != null)
                     {
@@ -164,7 +157,7 @@ namespace LinqToLdap.Visitors
                     break;
 
                 case ExpressionType.Call:
-                    var methodCall = e as MethodCallExpression;
+                    var methodCall = (MethodCallExpression)e;
 
                     // Only try to reduce if the call has no dependencies on query parameters
                     if (!ContainsParameterReference(methodCall))
@@ -172,9 +165,9 @@ namespace LinqToLdap.Visitors
                         try
                         {
                             canBeReduced = true;
-                            LambdaExpression lambda = Expression.Lambda(e);
-                            Delegate fn = lambda.Compile();
-                            return Expression.Constant(fn.DynamicInvoke(null), e.Type);
+                            var callLambda = Expression.Lambda(e);
+                            var callFn = callLambda.Compile();
+                            return Expression.Constant(callFn.DynamicInvoke(null), e.Type);
                         }
                         catch
                         {
@@ -187,16 +180,16 @@ namespace LinqToLdap.Visitors
                     return e;
 
                 case ExpressionType.MemberAccess:
-                    var member = e as MemberExpression;
+                    var member = (MemberExpression)e;
 
                     bool isNullable = member.Member.DeclaringType.Name != "Nullable`1";
 
-                    if (member.Type == typeof(bool) && ((isNullable && member.Member.Name == "HasValue") || (!isNullable)))
+                    if (member.Type == typeof(bool) && ((isNullable && member.Member.Name == "HasValue") || !isNullable))
                     {
                         canBeReduced = true;
-                        LambdaExpression lambda = Expression.Lambda(e);
-                        Delegate fn = lambda.Compile();
-                        return Expression.Constant(fn.DynamicInvoke(null), e.Type);
+                        var memberLambda = Expression.Lambda(e);
+                        var memberFn = memberLambda.Compile();
+                        return Expression.Constant(memberFn.DynamicInvoke(null), e.Type);
                     }
                     break;
             }
@@ -222,28 +215,15 @@ namespace LinqToLdap.Visitors
             if (expression.NodeType == ExpressionType.Parameter)
                 return true;
 
-            switch (expression)
+            return expression switch
             {
-                case BinaryExpression binary:
-                    return ContainsParameterReference(binary.Left) || ContainsParameterReference(binary.Right);
-
-                case UnaryExpression unary:
-                    return ContainsParameterReference(unary.Operand);
-
-                case MethodCallExpression methodCall:
-                    if (methodCall.Object != null && ContainsParameterReference(methodCall.Object))
-                        return true;
-                    return methodCall.Arguments.Any(ContainsParameterReference);
-
-                case MemberExpression member:
-                    return ContainsParameterReference(member.Expression);
-
-                case LambdaExpression lambda:
-                    return ContainsParameterReference(lambda.Body);
-
-                default:
-                    return false;
-            }
+                BinaryExpression binary => ContainsParameterReference(binary.Left) || ContainsParameterReference(binary.Right),
+                UnaryExpression unary => ContainsParameterReference(unary.Operand),
+                MethodCallExpression methodCall => (methodCall.Object != null && ContainsParameterReference(methodCall.Object)) || methodCall.Arguments.Any(ContainsParameterReference),
+                MemberExpression member => ContainsParameterReference(member.Expression),
+                LambdaExpression lambda => ContainsParameterReference(lambda.Body),
+                _ => false
+            };
         }
     }
 }

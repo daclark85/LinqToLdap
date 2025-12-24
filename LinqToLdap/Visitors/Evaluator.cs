@@ -48,8 +48,7 @@ namespace LinqToLdap.Visitors
         /// <summary>
         /// Evaluates and replaces sub-trees when first candidate is reached (top-down)
         /// </summary>
-
-        private class SubtreeEvaluator : ExpressionVisitor
+        private class SubtreeEvaluator : System.Linq.Expressions.ExpressionVisitor
         {
             private readonly HashSet<Expression> _candidates;
 
@@ -63,7 +62,7 @@ namespace LinqToLdap.Visitors
                 return Visit(exp);
             }
 
-            protected override Expression Visit(Expression exp)
+            public override Expression Visit(Expression exp)
             {
                 if (exp == null)
                 {

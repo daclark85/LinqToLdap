@@ -15,7 +15,7 @@ namespace LinqToLdap
         private readonly object _connectionLock = new();
         private readonly object _configLock = new();
         
-        private Dictionary<LdapConnection, TwoTuple<DateTime, DateTime>> _availableConnections = new();
+        private Dictionary<LdapConnection, Tuple<DateTime, DateTime>> _availableConnections = new();
         private Dictionary<LdapConnection, DateTime> _inUseConnections = new();
         
         // Use volatile for flags checked outside locks
@@ -215,7 +215,7 @@ namespace LinqToLdap
                     var pair = _availableConnections!.FirstOrDefault();
 
                     LdapConnection connection;
-                    if (Equals(pair, default(KeyValuePair<LdapConnection, TwoTuple<DateTime, DateTime>>)))
+                    if (Equals(pair, default(KeyValuePair<LdapConnection, Tuple<DateTime, DateTime>>)))
                     {
                         // No available connections - create new one
                         if (Logger?.TraceEnabled == true)
@@ -305,7 +305,7 @@ namespace LinqToLdap
 
                     if (DateTime.UtcNow.Subtract(createdDate) < maxAge)
                     {
-                        _availableConnections!.Add(connection, new TwoTuple<DateTime, DateTime>(createdDate, DateTime.UtcNow));
+                        _availableConnections!.Add(connection, new Tuple<DateTime, DateTime>(createdDate, DateTime.UtcNow));
                         if (Logger?.TraceEnabled == true)
                             Logger.Trace("Connection Marked As Available");
                     }
@@ -377,7 +377,7 @@ namespace LinqToLdap
                 try
                 {
                     var connection = BuildConnection();
-                    _availableConnections!.Add(connection, new TwoTuple<DateTime, DateTime>(DateTime.UtcNow, DateTime.UtcNow));
+                    _availableConnections!.Add(connection, new Tuple<DateTime, DateTime>(DateTime.UtcNow, DateTime.UtcNow));
                 }
                 catch (Exception ex)
                 {

@@ -7,21 +7,7 @@ using System.DirectoryServices.Protocols;
 using System.Security.Cryptography.X509Certificates;
 using System.Security.Principal;
 using System.Linq;
-
-#if NET35
-            using LinqToLdap.NET35.Tests.Properties;
-#endif
-#if NET40
-            using LinqToLdap.NET40.Tests.Properties;
-#endif
-#if NET45
-            using LinqToLdap.NET45.Tests.Properties;
-#endif
-#if (!NET35 && !NET40 && !NET45)
-
 using LinqToLdap.Tests.Properties;
-
-#endif
 
 namespace LinqToLdap.Tests.Collections
 {
@@ -355,11 +341,7 @@ namespace LinqToLdap.Tests.Collections
         [TestMethod]
         public void GetGuid_ExistsAndWrongType_ThrowsFormatException()
         {
-#if NET35
-            var str = string.Join(",", System.Text.Encoding.ASCII.GetBytes("prop1").Select(b => b.ToString(System.Globalization.CultureInfo.InvariantCulture)).ToArray());
-#else
             var str = string.Join(",", System.Text.Encoding.ASCII.GetBytes("prop1"));
-#endif
             Executing.This(() => _attributes.GetGuid("property1"))
                 .Should().Throw<FormatException>().And.Exception
                 .Satisfies(e => e.Message.Equals("Value '" + str + "' for attribute 'property1' caused ArgumentException when trying to convert to 'Guid' for theDn") &&
@@ -381,11 +363,7 @@ namespace LinqToLdap.Tests.Collections
         [TestMethod]
         public void GetSecurityIdentifier_ExistsAndWrongType_ThrowsFormatException()
         {
-#if NET35
-            var str = string.Join(",", System.Text.Encoding.ASCII.GetBytes("prop1").Select(b => b.ToString(System.Globalization.CultureInfo.InvariantCulture)).ToArray());
-#else
             var str = string.Join(",", System.Text.Encoding.ASCII.GetBytes("prop1"));
-#endif
             Executing.This(() => _attributes.GetSecurityIdentifier("property1"))
                 .Should().Throw<FormatException>().And.Exception
                 .Satisfies(e => e.Message.Equals("Value '" + str + "' for attribute 'property1' caused ArgumentOutOfRangeException when trying to convert to 'SecurityIdentifier' for theDn") &&

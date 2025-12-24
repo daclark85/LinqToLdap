@@ -14,7 +14,7 @@ namespace LinqToLdap.Logging
             sb.AppendLine("ResultCode: " + response.ResultCode);
             sb.AppendLine("ErrorMessage: " + response.ErrorMessage);
             sb.AppendLine("MatchedDN: " + response.MatchedDN);
-            sb.AppendLine("Referral: " + string.Join(", ", response.Referral.Select(u => u.ToString()).ToArray()));
+            sb.AppendLine("Referral: " + string.Join(", ", response.Referral.Select(u => u.ToString())));
             sb.AppendLine("RequestId: " + response.RequestId);
             sb.AppendLine("Controls: ");
             foreach (DirectoryControl control in response.Controls)
@@ -110,17 +110,15 @@ namespace LinqToLdap.Logging
 
         internal static void AppendTo(this DirectoryControl control, StringBuilder sb)
         {
-            if (control is PageResultRequestControl)
+            if (control is PageResultRequestControl pageControl)
             {
-                var pageControl = control as PageResultRequestControl;
                 sb.AppendLine("Page Size: " + pageControl.PageSize);
-                sb.AppendLine("Page Cookie Length: " + (pageControl.Cookie != null ? pageControl.Cookie.Length : 0));
+                sb.AppendLine("Page Cookie Length: " + (pageControl.Cookie?.Length ?? 0));
                 sb.AppendLine("Page Control Is Critical: " + control.IsCritical);
                 sb.AppendLine("Page Control OID: " + control.Type);
             }
-            if (control is VlvRequestControl)
+            else if (control is VlvRequestControl vlvControl)
             {
-                var vlvControl = control as VlvRequestControl;
                 sb.AppendLine("After Count: " + vlvControl.AfterCount);
                 sb.AppendLine("Before Count: " + vlvControl.BeforeCount);
                 sb.AppendLine("Offset: " + vlvControl.Offset);
@@ -128,9 +126,8 @@ namespace LinqToLdap.Logging
                 sb.AppendLine("Vlv Control Is Critical: " + control.IsCritical);
                 sb.AppendLine("Vlv Control OID: " + control.Type);
             }
-            else if (control is SortRequestControl)
+            else if (control is SortRequestControl sortControl)
             {
-                var sortControl = control as SortRequestControl;
                 var sortKey = sortControl.SortKeys.FirstOrDefault();
                 if (sortKey != null)
                 {
@@ -139,9 +136,8 @@ namespace LinqToLdap.Logging
                 sb.AppendLine("Sort Control Is Critical: " + control.IsCritical);
                 sb.AppendLine("Sort Control OID: " + control.Type);
             }
-            else if (control is AsqRequestControl)
+            else if (control is AsqRequestControl asqControl)
             {
-                var asqControl = control as AsqRequestControl;
                 sb.AppendLine("Attribute Scope: " + asqControl.AttributeName);
                 sb.AppendLine("Attribute Scope Control Is Critical: " + control.IsCritical);
                 sb.AppendLine("Attribute Scope Control OID: " + control.Type);
@@ -178,9 +174,9 @@ namespace LinqToLdap.Logging
 
                 var value = directoryAttribute.Count == 1 ? directoryAttribute[0] : string.Empty;
 
-                if (value is byte[])
+                if (value is byte[] byteArray)
                 {
-                    return string.Format(AttributeFormat, directoryAttribute.Name, (value as byte[]).ToStringOctet());
+                    return string.Format(AttributeFormat, directoryAttribute.Name, byteArray.ToStringOctet());
                 }
 
                 return string.Format(AttributeFormat, directoryAttribute.Name, value);
@@ -212,9 +208,9 @@ namespace LinqToLdap.Logging
                 else if (directoryAttribute.Count > 0)
                 {
                     var rawValue = directoryAttribute[0];
-                    if (rawValue is byte[])
+                    if (rawValue is byte[] byteArray)
                     {
-                        value = (rawValue as byte[]).ToStringOctet();
+                        value = byteArray.ToStringOctet();
                     }
                     else
                     {

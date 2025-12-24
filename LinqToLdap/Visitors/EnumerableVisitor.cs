@@ -3,7 +3,7 @@ using System.Linq.Expressions;
 
 namespace LinqToLdap.Visitors
 {
-    internal class EnumerableVisitor : ExpressionVisitor
+    internal class EnumerableVisitor : System.Linq.Expressions.ExpressionVisitor
     {
         private IEnumerable _list;
 

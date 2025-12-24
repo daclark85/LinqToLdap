@@ -10,10 +10,9 @@ namespace LinqToLdap.Visitors
         {
         }
 
-        protected override Expression VisitMemberAccess(MemberExpression m)
+        protected override Expression VisitMember(MemberExpression m)
         {
-            var methodCall = m.Expression as MethodCallExpression;
-            if (methodCall != null)
+            if (m.Expression is MethodCallExpression methodCall)
             {
                 if (methodCall.Method.DeclaringType == typeof(IDirectoryAttributes))
                 {
@@ -29,10 +28,12 @@ namespace LinqToLdap.Visitors
 
         protected override Expression VisitMethodCall(MethodCallExpression m)
         {
-            if (m.Method.DeclaringType == typeof(IDirectoryAttributes) && m.Method.Name.StartsWith("Get") &&
-                m.Arguments.Count > 0 && m.Arguments[0] is ConstantExpression)
+            if (m.Method.DeclaringType == typeof(IDirectoryAttributes) && 
+                m.Method.Name.StartsWith("Get") &&
+                m.Arguments.Count > 0 && 
+                m.Arguments[0] is ConstantExpression constantArg)
             {
-                var value = ((ConstantExpression)m.Arguments[0]).Value.ToString();
+                var value = constantArg.Value.ToString();
                 Properties[value] = value;
                 return m;
             }
