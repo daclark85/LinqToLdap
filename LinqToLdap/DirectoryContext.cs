@@ -1,10 +1,5 @@
-﻿#if !NET35 && !NET40
-
-using LinqToLdap.Async;
+﻿using LinqToLdap.Async;
 using System.Threading.Tasks;
-
-#endif
-
 using LinqToLdap.Collections;
 using LinqToLdap.EventListeners;
 using LinqToLdap.Exceptions;
@@ -234,8 +229,6 @@ namespace LinqToLdap
             return _connection.ListServerAttributes(attributes, Logger);
         }
 
-#if !NET35 && !NET40
-
         /// <summary>
         /// List server information from RootDSE.
         /// </summary>
@@ -300,26 +293,7 @@ namespace LinqToLdap
                 if (Logger != null && Logger.TraceEnabled) Logger.Trace(request.ToLogString());
 
                 SearchResponse response;
-#if NET45
-                return await Task.Factory.FromAsync(
-                    (callback, state) =>
-                    {
-                        return _connection.BeginSendRequest(request, resultProcessing, callback, state);
-                    },
-                    (asyncresult) =>
-                    {
-                        response = (SearchResponse)_connection.EndSendRequest(asyncresult);
-                        response.AssertSuccess();
 
-                        var entry = (response.Entries.Count == 0
-                                ? transformer.Default()
-                                : transformer.Transform(response.Entries[0])) as T;
-
-                        return entry;
-                    },
-                    null
-                ).ConfigureAwait(false);
-#else
                 response = await Task.Run(() => _connection.SendRequest(request) as SearchResponse).ConfigureAwait(false);
                 response.AssertSuccess();
                 var entry = (response.Entries.Count == 0
@@ -327,7 +301,7 @@ namespace LinqToLdap
                                 : transformer.Transform(response.Entries[0])) as T;
 
                 return entry;
-#endif
+
             }
             catch (Exception ex)
             {
@@ -337,7 +311,6 @@ namespace LinqToLdap
             }
         }
 
-#endif
 
         /// <summary>
         /// Retrieves the attributes from the directory using the distinguished name.  <see cref="SearchScope.Base"/> is used.
@@ -378,6 +351,12 @@ namespace LinqToLdap
                 {
                     request.Attributes.Add(property);
                 }
+                Console.WriteLine("IncludeSecurityMasks: " + mapping.IncludeSecurityMasks);
+
+                if (mapping.IncludeSecurityMasks != SecurityMasks.None)
+                {
+                    request.Controls.Add(new SecurityDescriptorFlagControl(mapping.IncludeSecurityMasks));
+                }
 
                 var transformer = new ResultTransformer(mapping.Properties, mapping);
 
@@ -402,7 +381,6 @@ namespace LinqToLdap
             }
         }
 
-#if !NET35 && !NET40
 
         /// <summary>
         /// Adds the entry to the directory and returns the newly saved entry from the directory. If the <paramref name="distinguishedName"/> is
@@ -466,7 +444,6 @@ namespace LinqToLdap
             else await AddEntryAsync(entry, distinguishedName, controls, resultProcessing).ConfigureAwait(false);
         }
 
-#endif
 
         /// <summary>
         /// Adds the entry to the directory and returns the newly saved entry from the directory. If the <paramref name="distinguishedName"/> is
@@ -951,8 +928,6 @@ namespace LinqToLdap
             return distinguishedName;
         }
 
-#if !NET35 && !NET40
-
         /// <summary>
         /// Adds the entry to the directory.
         /// </summary>
@@ -1243,21 +1218,8 @@ namespace LinqToLdap
         {
             if (_disposed) throw new ObjectDisposedException(GetType().FullName);
 
-#if NET45
-            return await Task.Factory.FromAsync(
-                    (callback, state) =>
-                    {
-                        return _connection.BeginSendRequest(request, resultProcessing, callback, state);
-                    },
-                    (asyncresult) =>
-                    {
-                        return _connection.EndSendRequest(asyncresult);
-                    },
-                    null
-                ).ConfigureAwait(false);
-#else
+
             return await Task.Run(() => _connection.SendRequest(request) as DirectoryResponse).ConfigureAwait(false);
-#endif
         }
 
         private async Task<string> UpdateEntryAsync<T>(T entry, string distinguishedName = null, DirectoryControl[] controls = null,
@@ -1316,21 +1278,9 @@ namespace LinqToLdap
                 if (Logger != null && Logger.TraceEnabled) Logger.Trace(request.ToLogString());
 
                 ModifyResponse response = null;
-#if NET45
-                await Task.Factory.FromAsync(
-                        (callback, state) =>
-                        {
-                            return _connection.BeginSendRequest(request, resultProcessing, callback, state);
-                        },
-                        (asyncresult) =>
-                        {
-                            response = _connection.EndSendRequest(asyncresult) as ModifyResponse;
-                        },
-                        null
-                    ).ConfigureAwait(false);
-#else
+
                 response = await Task.Run(() => _connection.SendRequest(request) as ModifyResponse).ConfigureAwait(false);
-#endif
+
                 response.AssertSuccess();
 
                 var postArgs = new ListenerPostArgs<object, ModifyRequest, ModifyResponse>(entry, request, response, _connection);
@@ -1402,21 +1352,7 @@ namespace LinqToLdap
                 if (Logger != null && Logger.TraceEnabled) Logger.Trace(request.ToLogString());
 
                 AddResponse response = null;
-#if NET45
-                await Task.Factory.FromAsync(
-                        (callback, state) =>
-                        {
-                            return _connection.BeginSendRequest(request, resultProcessing, callback, state);
-                        },
-                        (asyncresult) =>
-                        {
-                            response = _connection.EndSendRequest(asyncresult) as AddResponse;
-                        },
-                        null
-                    ).ConfigureAwait(false);
-#else
                 response = await Task.Run(() => _connection.SendRequest(request) as AddResponse).ConfigureAwait(false);
-#endif
 
                 response.AssertSuccess();
 
@@ -1434,8 +1370,6 @@ namespace LinqToLdap
 
             return distinguishedName;
         }
-
-#endif
 
         /// <summary>
         /// Finalizer that disposes of this class.

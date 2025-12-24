@@ -1,8 +1,9 @@
-﻿using System.Collections.Generic;
-using LinqToLdap.Mapping;
+﻿using LinqToLdap.Mapping;
 using LinqToLdap.Tests.TestSupport.ExtensionMethods;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SharpTestsEx;
+using System.Collections.Generic;
+using System.DirectoryServices.Protocols;
 
 namespace LinqToLdap.Tests.Mapping
 {
@@ -17,7 +18,7 @@ namespace LinqToLdap.Tests.Mapping
         {
         }
 
-        public override IClassMap PerformMapping(string namingContext = null, string objectCategory = null, bool includeObjectCategory = true, IEnumerable<string> objectClasses = null, bool includeObjectClasses = true)
+        public override IClassMap PerformMapping(string namingContext = null, string objectCategory = null, bool includeObjectCategory = true, IEnumerable<string> objectClasses = null, bool includeObjectClasses = true, SecurityMasks includeSecurityMasks = System.DirectoryServices.Protocols.SecurityMasks.None)
         {
             NamingContext(namingContext);
             ObjectClasses(objectClasses);

@@ -1,6 +1,7 @@
 ﻿using LinqToLdap.Exceptions;
 using System;
 using System.Collections.Generic;
+using System.DirectoryServices.Protocols;
 using System.Reflection;
 
 namespace LinqToLdap.Mapping
@@ -18,6 +19,7 @@ namespace LinqToLdap.Mapping
         /// <param name="includeObjectCategory">
         /// Indicates if the object category should be included in all queries.
         /// </param>
+        /// <param name="includeSecurityMasks"></param>
         /// <param name="namingContext">The location of the objects in the directory.</param>
         /// <param name="objectClasses">The object classes for the object.</param>
         /// <param name="includeObjectClasses">Indicates if the object classes should be included in all queries.</param>
@@ -25,7 +27,7 @@ namespace LinqToLdap.Mapping
         /// Thrown if the mapping is invalid.
         /// </exception>
         /// <returns></returns>
-        IObjectMapping Map(IClassMap classMap, string namingContext = null, IEnumerable<string> objectClasses = null, bool includeObjectClasses = true, string objectCategory = null, bool includeObjectCategory = true);
+        IObjectMapping Map(IClassMap classMap, string namingContext = null, IEnumerable<string> objectClasses = null, bool includeObjectClasses = true, string objectCategory = null, bool includeObjectCategory = true, SecurityMasks includeSecurityMasks = SecurityMasks.None);
 
         /// <summary>
         /// Creates or retrieves the <see cref="IObjectMapping"/> from <typeparam name="T"/>.
@@ -34,11 +36,12 @@ namespace LinqToLdap.Mapping
         /// <param name="objectClasses">The optional object classes.  Used for <see cref="AutoClassMap{T}"/></param>
         /// <param name="objectClass">The optional object class.  Used for <see cref="AutoClassMap{T}"/></param>
         /// <param name="objectCategory">The optional object category.  Used for <see cref="AutoClassMap{T}"/></param>
+        /// <param name="includeSecurityMasks"></param>
         /// <exception cref="MappingException">
         /// Thrown if the mapping is invalid.
         /// </exception>
         /// <returns></returns>
-        IObjectMapping Map<T>(string namingContext = null, string objectClass = null, IEnumerable<string> objectClasses = null, string objectCategory = null) where T : class;
+        IObjectMapping Map<T>(string namingContext = null, string objectClass = null, IEnumerable<string> objectClasses = null, string objectCategory = null, SecurityMasks includeSecurityMasks = SecurityMasks.None) where T : class;
 
         /// <summary>
         /// Gets the mapping for <typeparamref name="T"/>.
@@ -62,14 +65,9 @@ namespace LinqToLdap.Mapping
         /// <summary>
         /// Returns all mappings tracked by this object.
         /// </summary>
-        /// <returns></returns>
-#if (!NET35 && !NET40)
 
         System.Collections.ObjectModel.ReadOnlyDictionary<Type, IObjectMapping> GetMappings();
 
-#else
-        LinqToLdap.Collections.ReadOnlyDictionary<Type, IObjectMapping> GetMappings();
-#endif
 
         /// <summary>
         /// Indicates if a custom AutoMapping delegate has been provided

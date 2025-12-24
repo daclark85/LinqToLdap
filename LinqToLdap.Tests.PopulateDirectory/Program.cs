@@ -28,6 +28,30 @@ namespace LinqToLdap.Tests.PopulateDirectory
         private static void Main()
 
         {
+            using (var connection = new LdapConnection(ServerName))
+            {
+                connection.AuthType = AuthType.Negotiate;
+                connection.Bind();
+
+                var addRequest = new AddRequest(
+                    "CN=Employees,DC=Northwind,DC=local",
+                    new DirectoryAttribute("objectClass", "container")
+                );
+
+                try
+                {
+                    connection.SendRequest(addRequest);
+                    Console.WriteLine("Root container created");
+                }
+                catch (DirectoryOperationException ex)
+                {
+                    if (!ex.Message.Contains("already exists"))
+                        throw;
+                    Console.WriteLine("Root container already exists");
+                }
+            }
+
+
             var configuration = new LdapConfiguration()
 
                 .UseStaticStorage()
@@ -414,6 +438,9 @@ namespace LinqToLdap.Tests.PopulateDirectory
                 rangeTest.Set("member", newMembers);
 
                 context.Update(rangeTest);
+                
+                // Add Readers group with no members for integration tests
+                AddEntryIfNecessary("CN=Readers," + RolesDirectoryContainer, "group", context);
             }
         }
 

@@ -4,145 +4,52 @@ using System.Collections.Generic;
 using System.DirectoryServices.Protocols;
 using System.Linq;
 using System.Net;
-using System.Timers;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace LinqToLdap
 {
-    internal class PooledLdapConnectionFactory : ConnectionFactoryBase, IPooledConnectionFactoryConfiguration, IPooledLdapConnectionFactory, IDisposable
+    internal class PooledLdapConnectionFactory : ConnectionFactoryBase, 
+        IPooledConnectionFactoryConfiguration, IPooledLdapConnectionFactory, IDisposable
     {
-        private bool _disposed;
-        private object _connectionLockObject = new object();
-        private Dictionary<LdapConnection, TwoTuple<DateTime, DateTime>> _availableConnections = new Dictionary<LdapConnection, TwoTuple<DateTime, DateTime>>();
-        private Dictionary<LdapConnection, DateTime> _inUseConnections = new Dictionary<LdapConnection, DateTime>();
+        private readonly object _connectionLock = new();
+        private readonly object _configLock = new();
+        
+        private Dictionary<LdapConnection, TwoTuple<DateTime, DateTime>> _availableConnections = new();
+        private Dictionary<LdapConnection, DateTime> _inUseConnections = new();
+        
+        // Use volatile for flags checked outside locks
+        private volatile bool _disposed;
+        private volatile bool _isInitialized;
+        
+        // Configuration fields - protected by _configLock
         private int _maxPoolSize = 50;
         private int _minPoolSize;
         private double _connectionIdleTime = 1;
-        private Timer _timer;
-        private bool _isFirstRequest = true;
         private TimeSpan _maxConnectionAge = TimeSpan.FromMinutes(30);
+        private double _scavengeInterval = 90000;
+        
+        // Replace System.Timers.Timer with PeriodicTimer
+        private PeriodicTimer _scavengeTimer;
+        private CancellationTokenSource _cancellationTokenSource;
+        private Task _scavengeTask;
 
         public PooledLdapConnectionFactory(string serverName) : base(serverName)
         {
-            _timer = new Timer();
-            _timer.Elapsed += TimerElapsed;
-            _timer.Interval = 90000;
         }
 
-        ~PooledLdapConnectionFactory()
-        {
-            Dispose(false);
-        }
-
-        public void Dispose()
-        {
-            if (_disposed) return;
-
-            Dispose(true);
-            _disposed = true;
-            GC.SuppressFinalize(this);
-        }
-
-        private void Dispose(bool disposing)
-        {
-            var lockObject = _connectionLockObject;
-            if (lockObject != null && disposing)
-            {
-                lock (lockObject)
-                {
-                    DisposeWork(disposing);
-                }
-            }
-            else
-            {
-                DisposeWork(disposing);
-            }
-
-            Logger = null;
-            _connectionLockObject = lockObject = null;
-            Credentials = null;
-        }
-
-        private void DisposeWork(bool disposing)
-        {
-            var logger = Logger;
-            try
-            {
-                var availableConnections = _availableConnections;
-                var inUseConnections = _inUseConnections;
-                var timer = _timer;
-
-                if (timer != null)
-                {
-                    if (disposing)
-                    {
-                        timer.Stop();
-                        timer.Elapsed -= TimerElapsed;
-                        timer.Dispose();
-                    }
-                    _timer = timer = null;
-                }
-
-                if (availableConnections != null)
-                {
-                    foreach (var connection in availableConnections)
-                    {
-                        try
-                        {
-                            if (disposing) connection.Key.Dispose();
-                        }
-                        catch (Exception ex)
-                        {
-                            if (logger != null) logger.Error(ex);
-                        }
-                    }
-
-                    availableConnections.Clear();
-                    _availableConnections = availableConnections = null;
-                }
-
-                if (inUseConnections != null)
-                {
-                    foreach (var connection in inUseConnections)
-                    {
-                        try
-                        {
-                            if (disposing) connection.Key.Dispose();
-                        }
-                        catch (Exception ex)
-                        {
-                            if (logger != null)
-                            {
-                                logger.Error(ex);
-                            }
-                        }
-                    }
-
-                    inUseConnections.Clear();
-                    _inUseConnections = inUseConnections = null;
-                }
-            }
-            catch (Exception ex)
-            {
-                try
-                {
-                    if (logger != null) logger.Error(ex);
-                }
-                catch (Exception)
-                {
-                    //dispose should never throw an exception
-                }
-            }
-            Logger = logger = null;
-        }
+        #region Configuration Methods (Thread-Safe)
 
         IPooledConnectionFactoryConfiguration IPooledConnectionFactoryConfiguration.ProtocolVersion(int version)
         {
+            ThrowIfInitialized();
             LdapProtocolVersion = version;
             return this;
         }
 
         IPooledConnectionFactoryConfiguration IPooledConnectionFactoryConfiguration.UsePort(int port)
         {
+            ThrowIfInitialized();
             UsesSsl = false;
             Port = port;
             return this;
@@ -150,12 +57,15 @@ namespace LinqToLdap
 
         IPooledConnectionFactoryConfiguration IPooledConnectionFactoryConfiguration.UseSsl(int port)
         {
+            ThrowIfInitialized();
             UsesSsl = true;
+            Port = port;
             return this;
         }
 
         IPooledConnectionFactoryConfiguration IPooledConnectionFactoryConfiguration.UseSsl()
         {
+            ThrowIfInitialized();
             UsesSsl = true;
             Port = SslPort;
             return this;
@@ -163,215 +73,403 @@ namespace LinqToLdap
 
         IPooledConnectionFactoryConfiguration IPooledConnectionFactoryConfiguration.ConnectionTimeoutIn(double seconds)
         {
+            ThrowIfInitialized();
             if (seconds <= 0) throw new ArgumentException("seconds must be greater than 0");
             Timeout = TimeSpan.FromSeconds(seconds);
-
             return this;
         }
 
         IPooledConnectionFactoryConfiguration IPooledConnectionFactoryConfiguration.ServerNameIsFullyQualified()
         {
+            ThrowIfInitialized();
             FullyQualifiedDnsHostName = true;
             return this;
         }
 
         IPooledConnectionFactoryConfiguration IPooledConnectionFactoryConfiguration.UseUdp()
         {
+            ThrowIfInitialized();
             IsConnectionless = true;
             return this;
         }
 
         IPooledConnectionFactoryConfiguration IPooledConnectionFactoryConfiguration.AuthenticateBy(AuthType authType)
         {
+            ThrowIfInitialized();
             AuthType = authType;
             return this;
         }
 
         IPooledConnectionFactoryConfiguration IPooledConnectionFactoryConfiguration.AuthenticateAs(NetworkCredential credentials)
         {
+            ThrowIfInitialized();
             Credentials = credentials;
             return this;
         }
 
         IPooledConnectionFactoryConfiguration IPooledConnectionFactoryConfiguration.MaxPoolSizeIs(int size)
         {
+            ThrowIfInitialized();
             if (size < 1) throw new ArgumentException("MaxPoolSize must be greater than zero.");
-            _maxPoolSize = size;
+            lock (_configLock)
+            {
+                _maxPoolSize = size;
+            }
             return this;
         }
 
         IPooledConnectionFactoryConfiguration IPooledConnectionFactoryConfiguration.MinPoolSizeIs(int size)
         {
+            ThrowIfInitialized();
             if (size < 0) throw new ArgumentException("MinPoolSize cannot be negative.");
-            _minPoolSize = size;
+            lock (_configLock)
+            {
+                _minPoolSize = size;
+            }
             return this;
         }
 
         IPooledConnectionFactoryConfiguration IPooledConnectionFactoryConfiguration.MaxConnectionAgeIs(TimeSpan timeSpan)
         {
-            _maxConnectionAge = timeSpan;
+            ThrowIfInitialized();
+            lock (_configLock)
+            {
+                _maxConnectionAge = timeSpan;
+            }
             return this;
         }
 
         IPooledConnectionFactoryConfiguration IPooledConnectionFactoryConfiguration.ConnectionIdleTimeIs(double idleTime)
         {
+            ThrowIfInitialized();
             if (idleTime < 0) throw new ArgumentException("ConnectionIdleTime cannot be negative.");
-            _connectionIdleTime = idleTime;
+            lock (_configLock)
+            {
+                _connectionIdleTime = idleTime;
+            }
             return this;
         }
 
         IPooledConnectionFactoryConfiguration IPooledConnectionFactoryConfiguration.ScavengeIntervalIs(double interval)
         {
+            ThrowIfInitialized();
             if (interval < 0) throw new ArgumentException("ScavengeInterval cannot be negative.");
-            _timer.Interval = interval;
+            lock (_configLock)
+            {
+                _scavengeInterval = interval;
+            }
             return this;
+        }
+
+        IPooledConnectionFactoryConfiguration IPooledConnectionFactoryConfiguration.UseSealing()
+        {
+            ThrowIfInitialized();
+            Sealing = true;
+            return this;
+        }
+
+        IPooledConnectionFactoryConfiguration IPooledConnectionFactoryConfiguration.UseSigning()
+        {
+            ThrowIfInitialized();
+            Signing = true;
+            return this;
+        }
+
+        IPooledConnectionFactoryConfiguration IPooledConnectionFactoryConfiguration.IgnoreSslCertificateErrors()
+        {
+            ThrowIfInitialized();
+            _IgnoreSslCertificateErrors = true;
+            return this;
+        }
+
+        private void ThrowIfInitialized()
+        {
+            if (_isInitialized)
+                throw new InvalidOperationException("Cannot modify configuration after the pool has been initialized.");
+        }
+
+        #endregion
+
+        #region Connection Pool Methods
+
+        public LdapConnection GetConnection()
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+
+            lock (_connectionLock)
+            {
+                // Double-check disposal inside lock
+                ObjectDisposedException.ThrowIf(_disposed, this);
+
+                try
+                {
+                    if (!_isInitialized)
+                    {
+                        InitializePool();
+                    }
+
+                    // Remove stale connections
+                    RemoveStaleConnections();
+
+                    // Try to get available connection
+                    var pair = _availableConnections!.FirstOrDefault();
+
+                    LdapConnection connection;
+                    if (Equals(pair, default(KeyValuePair<LdapConnection, TwoTuple<DateTime, DateTime>>)))
+                    {
+                        // No available connections - create new one
+                        if (Logger?.TraceEnabled == true)
+                            Logger.Trace("Creating Connection For Use.");
+
+                        int currentTotal = _inUseConnections!.Count + _availableConnections.Count + 1;
+                        int maxSize;
+                        lock (_configLock) { maxSize = _maxPoolSize; }
+
+                        if (currentTotal > maxSize)
+                            throw new InvalidOperationException($"LdapConnection pool limit of {maxSize} exceeded.");
+
+                        connection = BuildConnection();
+                        
+                        // Validate connection before adding to pool
+                        if (!ValidateConnection(connection))
+                        {
+                            connection.Dispose();
+                            throw new InvalidOperationException("Failed to create valid LDAP connection.");
+                        }
+
+                        _inUseConnections.Add(connection, DateTime.UtcNow);
+                    }
+                    else
+                    {
+                        // Reuse available connection
+                        if (Logger?.TraceEnabled == true)
+                            Logger.Trace("Using Available Connection.");
+
+                        connection = pair.Key;
+                        
+                        // Validate connection health before reusing
+                        if (!ValidateConnection(connection))
+                        {
+                            if (Logger?.TraceEnabled == true)
+                                Logger.Trace("Connection failed health check. Creating new connection.");
+                            
+                            _availableConnections.Remove(pair.Key);
+                            pair.Key.Dispose();
+                            
+                            // Recursively try again
+                            return GetConnection();
+                        }
+
+                        _inUseConnections.Add(pair.Key, pair.Value.Item1);
+                        _availableConnections.Remove(pair.Key);
+                    }
+
+                    if (Logger?.TraceEnabled == true)
+                    {
+                        Logger.Trace($"In Use Connection Count: {_inUseConnections.Count}");
+                        Logger.Trace($"Available Connection Count: {_availableConnections.Count}");
+                    }
+
+                    return connection;
+                }
+                catch (Exception ex)
+                {
+                    Logger?.Error(ex);
+                    throw;
+                }
+            }
         }
 
         public void ReleaseConnection(LdapConnection connection)
         {
-            var lockObject = _connectionLockObject;
-            if (_disposed) throw new ObjectDisposedException(GetType().FullName);
+            ObjectDisposedException.ThrowIf(_disposed, this);
 
-            if (lockObject == null)
-            {
-                //lock is null so this class is being finalized
-                connection.Dispose();
-                _inUseConnections?.Remove(connection);
-                if (Logger != null && Logger.TraceEnabled) Logger.Trace("Synchronization object lost. Disposing of connection.");
-                return;
-            }
+            if (connection == null)
+                throw new ArgumentNullException(nameof(connection));
 
-            lock (lockObject)
+            lock (_connectionLock)
             {
-                DateTime createdDate;
-                if (_inUseConnections.TryGetValue(connection, out createdDate))
+                // Double-check disposal inside lock
+                if (_disposed)
+                {
+                    connection.Dispose();
+                    return;
+                }
+
+                if (_inUseConnections!.TryGetValue(connection, out DateTime createdDate))
                 {
                     _inUseConnections.Remove(connection);
-                    if (DateTime.Now.Subtract(createdDate).TotalMinutes < _maxConnectionAge.TotalMinutes)
+
+                    TimeSpan maxAge;
+                    lock (_configLock) { maxAge = _maxConnectionAge; }
+
+                    if (DateTime.UtcNow.Subtract(createdDate) < maxAge)
                     {
-                        _availableConnections.Add(connection, new TwoTuple<DateTime, DateTime>(createdDate, DateTime.Now));
-                        if (Logger != null && Logger.TraceEnabled) Logger.Trace("Connection Marked As Available");
+                        _availableConnections!.Add(connection, new TwoTuple<DateTime, DateTime>(createdDate, DateTime.UtcNow));
+                        if (Logger?.TraceEnabled == true)
+                            Logger.Trace("Connection Marked As Available");
                     }
                     else
                     {
                         connection.Dispose();
-                        if (Logger != null && Logger.TraceEnabled) Logger.Trace("Connection Exceeds Max Age. Connection Disposed.");
+                        if (Logger?.TraceEnabled == true)
+                            Logger.Trace("Connection Exceeds Max Age. Connection Disposed.");
                     }
                 }
                 else
                 {
+                    // Connection not tracked - dispose it
                     connection.Dispose();
-                    if (Logger != null && Logger.TraceEnabled) Logger.Trace("Connection Disposed");
+                    if (Logger?.TraceEnabled == true)
+                        Logger.Trace("Unknown connection disposed.");
                 }
             }
         }
 
-        public LdapConnection GetConnection()
+        public void Reinitialize()
         {
-            if (_disposed) throw new ObjectDisposedException(GetType().FullName);
-            LdapConnection connection;
-            lock (_connectionLockObject)
+            ObjectDisposedException.ThrowIf(_disposed, this);
+
+            lock (_connectionLock)
             {
-                try
+                ObjectDisposedException.ThrowIf(_disposed, this);
+
+                if (Logger?.TraceEnabled == true)
+                    Logger.Trace("Reinitializing Connection Pool.");
+
+                // Clear in-use connections
+                _inUseConnections!.Clear();
+
+                // Dispose available connections
+                foreach (var availableConnection in _availableConnections!)
                 {
-                    if (_isFirstRequest) InitializePool();
-
-                    var pair = _availableConnections.FirstOrDefault();
-
-                    while (true)
+                    try
                     {
-                        if (!Equals(pair, default(KeyValuePair<LdapConnection, TwoTuple<DateTime, DateTime>>)) && DateTime.Now.Subtract(pair.Value.Item1).TotalMinutes > _maxConnectionAge.TotalMinutes)
-                        {
-                            _availableConnections.Remove(pair.Key);
-                            pair.Key.Dispose();
-                            pair = _availableConnections.FirstOrDefault();
-                        }
-                        else
-                        {
-                            break;
-                        }
+                        availableConnection.Key.Dispose();
                     }
-
-                    if (Equals(pair, default(KeyValuePair<LdapConnection, TwoTuple<DateTime, DateTime>>)))
+                    catch (Exception ex)
                     {
-                        if (Logger != null && Logger.TraceEnabled) Logger.Trace("Creating Connection For Use.");
-                        if ((_inUseConnections.Count + _availableConnections.Count + 1) > _maxPoolSize)
-                            throw new InvalidOperationException(
-                                string.Format("LdapConnection pool limit of {0} exceeded.", _maxPoolSize));
-
-                        connection = BuildConnection();
-                        _inUseConnections.Add(connection, DateTime.Now);
-                    }
-                    else
-                    {
-                        if (Logger != null && Logger.TraceEnabled) Logger.Trace("Using Available Connection.");
-                        _inUseConnections.Add(pair.Key, pair.Value.Item1);
-                        _availableConnections.Remove(pair.Key);
-                        connection = pair.Key;
-                    }
-                    if (Logger != null && Logger.TraceEnabled)
-                    {
-                        Logger.Trace("In Use Connection Count: " + _inUseConnections.Count);
-                        Logger.Trace("Available Connection Count: " + _availableConnections.Count);
+                        Logger?.Error(ex);
                     }
                 }
-                catch (Exception ex)
-                {
-                    if (Logger != null) Logger.Error(ex);
-                    throw;
-                }
+                _availableConnections.Clear();
+
+                _isInitialized = false;
             }
-            return connection;
         }
+
+        #endregion
+
+        #region Private Helper Methods
 
         private void InitializePool()
         {
-            if (Logger != null && Logger.TraceEnabled) Logger.Trace("Initializing Connection Pool.");
-            for (int i = 0; i < _minPoolSize; i++)
-            {
-                _availableConnections.Add(BuildConnection(), new TwoTuple<DateTime, DateTime>(DateTime.Now, DateTime.Now));
-            }
+            // Must be called within _connectionLock
 
-            _isFirstRequest = false;
-            _timer.Start();
-            if (Logger != null && Logger.TraceEnabled) Logger.Trace("Scavenge Timer Started.");
-        }
+            if (Logger?.TraceEnabled == true)
+                Logger.Trace("Initializing Connection Pool.");
 
-        private void TimerElapsed(object sender, ElapsedEventArgs e)
-        {
-            if (_disposed) throw new ObjectDisposedException(GetType().FullName);
-            lock (_connectionLockObject)
+            int minSize;
+            lock (_configLock) { minSize = _minPoolSize; }
+
+            for (int i = 0; i < minSize; i++)
             {
                 try
                 {
-                    if (Logger != null && Logger.TraceEnabled)
-                    {
-                        Logger.Trace("Available Connections Before Scavenge: " + _availableConnections.Count);
-                        Logger.Trace("Scavenging Connections.");
-                    }
-
-                    ScavengeConnections(e.SignalTime);
-
-                    if (Logger != null && Logger.TraceEnabled) Logger.Trace("Available Connections After Scavenge: " + _availableConnections.Count);
+                    var connection = BuildConnection();
+                    _availableConnections!.Add(connection, new TwoTuple<DateTime, DateTime>(DateTime.UtcNow, DateTime.UtcNow));
                 }
                 catch (Exception ex)
                 {
-                    if (Logger != null) Logger.Error(ex);
-                    throw;
+                    Logger?.Error(ex, "Failed to create connection during pool initialization.");
+                    // Continue creating remaining connections
                 }
+            }
+
+            _isInitialized = true;
+
+            // Start scavenger
+            StartScavenger();
+
+            if (Logger?.TraceEnabled == true)
+                Logger.Trace("Scavenge Timer Started.");
+        }
+
+        private void StartScavenger()
+        {
+            // Must be called within _connectionLock
+            
+            double interval;
+            lock (_configLock) { interval = _scavengeInterval; }
+
+            _cancellationTokenSource = new CancellationTokenSource();
+            _scavengeTimer = new PeriodicTimer(TimeSpan.FromMilliseconds(interval));
+            _scavengeTask = Task.Run(async () => await RunScavengeLoopAsync());
+        }
+
+        private async Task RunScavengeLoopAsync()
+        {
+            try
+            {
+                while (await _scavengeTimer!.WaitForNextTickAsync(_cancellationTokenSource!.Token))
+                {
+                    if (_disposed) break;
+
+                    lock (_connectionLock)
+                    {
+                        if (_disposed) break;
+
+                        try
+                        {
+                            if (Logger?.TraceEnabled == true)
+                            {
+                                Logger.Trace($"Available Connections Before Scavenge: {_availableConnections!.Count}");
+                                Logger.Trace("Scavenging Connections.");
+                            }
+
+                            ScavengeConnections();
+
+                            if (Logger?.TraceEnabled == true)
+                                Logger.Trace($"Available Connections After Scavenge: {_availableConnections!.Count}");
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger?.Error(ex, "Error during connection scavenging.");
+                        }
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected when disposed
+            }
+            catch (Exception ex)
+            {
+                Logger?.Error(ex, "Unexpected error in scavenge loop.");
             }
         }
 
-        private void ScavengeConnections(DateTime signalTime)
+        private void ScavengeConnections()
         {
-            int amountToScavenge = _minPoolSize == 0
-                                               ? _availableConnections.Count
-                                               : (_availableConnections.Count - _minPoolSize);
+            // Must be called within _connectionLock
+
+            int minSize;
+            double idleTime;
+            lock (_configLock)
+            {
+                minSize = _minPoolSize;
+                idleTime = _connectionIdleTime;
+            }
+
+            int amountToScavenge = minSize == 0
+                ? _availableConnections!.Count
+                : (_availableConnections!.Count - minSize);
 
             if (amountToScavenge <= 0) return;
 
+            DateTime now = DateTime.UtcNow;
             var expiredConnections = (from pair in _availableConnections
-                                      where signalTime.Subtract(pair.Value.Item2).TotalMinutes > _connectionIdleTime
+                                      where now.Subtract(pair.Value.Item2).TotalMinutes > idleTime
                                       select pair.Key).ToList();
 
             foreach (var expiredConnection in expiredConnections)
@@ -379,36 +477,146 @@ namespace LinqToLdap
                 if (amountToScavenge == 0) break;
 
                 _availableConnections.Remove(expiredConnection);
-                expiredConnection.Dispose();
-                if (Logger != null && Logger.TraceEnabled) Logger.Trace("Connection Scavenged.");
+                try
+                {
+                    expiredConnection.Dispose();
+                    if (Logger?.TraceEnabled == true)
+                        Logger.Trace("Connection Scavenged.");
+                }
+                catch (Exception ex)
+                {
+                    Logger?.Error(ex, "Error disposing scavenged connection.");
+                }
+
                 amountToScavenge--;
             }
         }
 
-        public void Reinitialize()
+        private void RemoveStaleConnections()
         {
-            if (_disposed) throw new ObjectDisposedException(GetType().FullName);
-            lock (_connectionLockObject)
+            // Must be called within _connectionLock
+
+            TimeSpan maxAge;
+            lock (_configLock) { maxAge = _maxConnectionAge; }
+
+            DateTime now = DateTime.UtcNow;
+            var staleConnections = _availableConnections!
+                .Where(pair => now.Subtract(pair.Value.Item1) > maxAge)
+                .Select(pair => pair.Key)
+                .ToList();
+
+            foreach (var staleConnection in staleConnections)
             {
-                if (_timer.Enabled)
+                _availableConnections.Remove(staleConnection);
+                try
                 {
-                    _timer.Stop();
-                    if (Logger != null && Logger.TraceEnabled) Logger.Trace("Scavenge Timer Stopped.");
+                    staleConnection.Dispose();
                 }
-                if (Logger != null && Logger.TraceEnabled) Logger.Trace("Initializing Connection Pool.");
-
-                //LdapConnection has a finalizer so once the connections fall out of scope or
-                //DirectoryContext explicitly calls ReleaseConnection, they will be cleaned up.
-                _inUseConnections.Clear();
-
-                foreach (var availableConnection in _availableConnections)
+                catch (Exception ex)
                 {
-                    availableConnection.Key.Dispose();
+                    Logger?.Error(ex, "Error disposing stale connection.");
                 }
-                _availableConnections.Clear();
-
-                _isFirstRequest = true;
             }
         }
+
+        private bool ValidateConnection(LdapConnection connection)
+        {
+            try
+            {
+                // Simple health check - search for RootDSE
+                var request = new SearchRequest("", "(objectClass=*)", SearchScope.Base, "1.1");
+                request.SizeLimit = 1;
+                request.TimeLimit = TimeSpan.FromSeconds(2);
+                
+                var response = connection.SendRequest(request) as SearchResponse;
+                return response?.ResultCode == ResultCode.Success;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        #endregion
+
+        #region Disposal
+
+        public void Dispose()
+        {
+            if (_disposed) return;
+
+            // Stop scavenger first
+            try
+            {
+                _cancellationTokenSource?.Cancel();
+                _scavengeTimer?.Dispose();
+                _scavengeTask?.Wait(TimeSpan.FromSeconds(5)); // Give it time to stop
+            }
+            catch (Exception ex)
+            {
+                Logger?.Error(ex, "Error stopping scavenger during disposal.");
+            }
+
+            lock (_connectionLock)
+            {
+                if (_disposed) return;
+
+                _disposed = true;
+
+                DisposeConnections();
+
+                _availableConnections = null;
+                _inUseConnections = null;
+            }
+
+            _cancellationTokenSource?.Dispose();
+            _cancellationTokenSource = null;
+            _scavengeTimer = null;
+            _scavengeTask = null;
+
+            Logger = null;
+            Credentials = null;
+
+            GC.SuppressFinalize(this);
+        }
+
+        private void DisposeConnections()
+        {
+            // Must be called within _connectionLock
+
+            if (_availableConnections != null)
+            {
+                foreach (var connection in _availableConnections)
+                {
+                    try
+                    {
+                        connection.Key.Dispose();
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger?.Error(ex);
+                    }
+                }
+                _availableConnections.Clear();
+            }
+
+            if (_inUseConnections != null)
+            {
+                foreach (var connection in _inUseConnections)
+                {
+                    try
+                    {
+                        connection.Key.Dispose();
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger?.Error(ex);
+                    }
+                }
+                _inUseConnections.Clear();
+            }
+        }
+
+        #endregion
     }
 }

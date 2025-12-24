@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.DirectoryServices.Protocols;
 
 namespace LinqToLdap.Mapping
 {
@@ -56,13 +57,14 @@ namespace LinqToLdap.Mapping
         bool IncludeObjectClasses { get; }
 
         /// <summary>
+        /// Gets the control flags associated with the security descriptor.
+        /// </summary>
+        SecurityMasks IncludeSecurityMasks { get; }
+
+        /// <summary>
         /// Dictionary for properties mapped to attribute names
         /// </summary>
-#if (!NET35 && !NET40)
         System.Collections.ObjectModel.ReadOnlyDictionary<string, string> Properties { get; }
-#else
-        LinqToLdap.Collections.ReadOnlyDictionary<string, string> Properties { get; }
-#endif
 
         /// <summary>
         /// All mapped properties

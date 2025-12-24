@@ -119,6 +119,37 @@ namespace LinqToLdap
         }
 
         /// <summary>
+        /// Enables sealing (encryption) for the LDAP connection.
+        /// </summary>
+        /// <returns></returns>
+        public ILdapConnectionFactoryConfiguration UseSealing()
+        {
+            Sealing = true;
+            return this;
+        }
+
+        /// <summary>
+        /// Enables signing (integrity protection) for the LDAP connection.
+        /// </summary>
+        /// <returns></returns>
+        public ILdapConnectionFactoryConfiguration UseSigning()
+        {
+            Signing = true;
+            return this;
+        }
+
+        /// <summary>
+        /// Disables SSL/TLS certificate validation.
+        /// WARNING: Only use this in development/testing environments!
+        /// </summary>
+        /// <returns></returns>
+        public ILdapConnectionFactoryConfiguration IgnoreSslCertificateErrors()
+        {
+            base._IgnoreSslCertificateErrors = true;
+            return this;
+        }
+
+        /// <summary>
         /// Releases a <see cref="LdapConnection"/>.
         /// </summary>
         /// <returns></returns>

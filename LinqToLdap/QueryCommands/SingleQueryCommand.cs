@@ -25,7 +25,6 @@ namespace LinqToLdap.QueryCommands
             return HandleResponse(response);
         }
 
-#if !NET35 && !NET40
 
         public override async System.Threading.Tasks.Task<object> ExecuteAsync(LdapConnection connection, SearchScope scope, int maxPageSize, bool pagingEnabled, ILinqToLdapLogger log = null, string namingContext = null)
         {
@@ -34,26 +33,9 @@ namespace LinqToLdap.QueryCommands
 
             BuildRequest(scope, maxPageSize, pagingEnabled, log, namingContext);
 
-#if NET45
-            return await System.Threading.Tasks.Task.Factory.FromAsync(
-                (callback, state) =>
-                {
-                    return connection.BeginSendRequest(SearchRequest, Options.AsyncProcessing, callback, state);
-                },
-                (asyncresult) =>
-                {
-                    var response = (SearchResponse)connection.EndSendRequest(asyncresult);
-                    return HandleResponse(response);
-                },
-                null
-            ).ConfigureAwait(false);
-#else
             var response = await System.Threading.Tasks.Task.Run(() => connection.SendRequest(SearchRequest) as SearchResponse).ConfigureAwait(false);
             return HandleResponse(response);
-#endif
         }
-
-#endif
 
         private void BuildRequest(SearchScope scope, int maxPageSize, bool pagingEnabled, ILinqToLdapLogger log = null, string namingContext = null)
         {

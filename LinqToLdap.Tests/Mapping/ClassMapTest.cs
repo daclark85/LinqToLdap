@@ -1,11 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using LinqToLdap.Exceptions;
+﻿using LinqToLdap.Exceptions;
 using LinqToLdap.Mapping;
 using LinqToLdap.Mapping.PropertyMappingBuilders;
 using LinqToLdap.Tests.TestSupport.ExtensionMethods;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SharpTestsEx;
+using System;
+using System.Collections.Generic;
+using System.DirectoryServices.Protocols;
 
 namespace LinqToLdap.Tests.Mapping
 {
@@ -24,7 +25,7 @@ namespace LinqToLdap.Tests.Mapping
 
     public class TestClassMapValid : ClassMap<TestClass>
     {
-        public override IClassMap PerformMapping(string namingContext = null, string objectCategory = null, bool includeObjectCategory = true, IEnumerable<string> objectClasses = null, bool includeObjectClasses = true)
+        public override IClassMap PerformMapping(string namingContext = null, string objectCategory = null, bool includeObjectCategory = true, IEnumerable<string> objectClasses = null, bool includeObjectClasses = true, SecurityMasks includeSecurityMasks = System.DirectoryServices.Protocols.SecurityMasks.None)
         {
             NamingContext("container");
             ObjectCategory("category", true);
@@ -56,7 +57,7 @@ namespace LinqToLdap.Tests.Mapping
 
     public class TestClassMapOCValid : ClassMap<TestClass>
     {
-        public override IClassMap PerformMapping(string namingContext = null, string objectCategory = null, bool includeObjectCategory = true, IEnumerable<string> objectClasses = null, bool includeObjectClasses = true)
+        public override IClassMap PerformMapping(string namingContext = null, string objectCategory = null, bool includeObjectCategory = true, IEnumerable<string> objectClasses = null, bool includeObjectClasses = true, SecurityMasks includeSecurityMasks = System.DirectoryServices.Protocols.SecurityMasks.None)
         {
             NamingContext("container");
             ObjectCategory(null, true);
@@ -87,7 +88,7 @@ namespace LinqToLdap.Tests.Mapping
 
     public class TestClassMapTwoCommonName : ClassMap<TestClass>
     {
-        public override IClassMap PerformMapping(string namingContext = null, string objectCategory = null, bool includeObjectCategory = true, IEnumerable<string> objectClasses = null, bool includeObjectClasses = true)
+        public override IClassMap PerformMapping(string namingContext = null, string objectCategory = null, bool includeObjectCategory = true, IEnumerable<string> objectClasses = null, bool includeObjectClasses = true, SecurityMasks includeSecurityMasks = System.DirectoryServices.Protocols.SecurityMasks.None)
         {
             DistinguishedName(s => s.Property2);
             DistinguishedName(s => s.Property3);
@@ -98,7 +99,7 @@ namespace LinqToLdap.Tests.Mapping
 
     public class TestClassMapNoProperties : ClassMap<TestClass>
     {
-        public override IClassMap PerformMapping(string namingContext = null, string objectCategory = null, bool includeObjectCategory = true, IEnumerable<string> objectClasses = null, bool includeObjectClasses = true)
+        public override IClassMap PerformMapping(string namingContext = null, string objectCategory = null, bool includeObjectCategory = true, IEnumerable<string> objectClasses = null, bool includeObjectClasses = true, SecurityMasks includeSecurityMasks = System.DirectoryServices.Protocols.SecurityMasks.None)
         {
             NamingContext("name");
 

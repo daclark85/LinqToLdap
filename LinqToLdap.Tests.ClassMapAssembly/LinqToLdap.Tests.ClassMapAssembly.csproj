@@ -1,14 +1,17 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.1;netstandard2.0;net35;net40;net45</TargetFrameworks>
-    <SignAssembly>true</SignAssembly>
-    <DelaySign>false</DelaySign>
-    <AssemblyOriginatorKeyFile>C:\Users\alanh\Code\local\LinqToLdap\LinqToLdap.Tests\linqtoldap_tests.snk</AssemblyOriginatorKeyFile>
+	<TargetFramework>net10.0-windows</TargetFramework>
+	 <SignAssembly>true</SignAssembly>
+	 <AssemblyOriginatorKeyFile>D:\Users\Dale\source\repos\LinqToLdap\LinqToLdap.Tests\linqtoldap_tests.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
 
   <ItemGroup>
     <None Include="..\LinqToLdap.Tests\linqtoldap_tests.snk" Link="linqtoldap_tests.snk" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.DirectoryServices.Protocols" Version="10.0.1" />
   </ItemGroup>
 
   <ItemGroup>

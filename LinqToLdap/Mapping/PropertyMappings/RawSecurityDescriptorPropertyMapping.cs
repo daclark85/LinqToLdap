@@ -1,20 +1,25 @@
-﻿using System;
 using System.DirectoryServices.Protocols;
-using System.Security.Cryptography.X509Certificates;
+using System.Security.AccessControl;
 
 namespace LinqToLdap.Mapping.PropertyMappings
 {
-    internal class X509Certificate2PropertyMapping<T> : PropertyMappingGeneric<T> where T : class
+    internal class RawSecurityDescriptorPropertyMapping<T> : PropertyMappingGeneric<T> where T : class
     {
-        public X509Certificate2PropertyMapping(PropertyMappingArguments<T> arguments) : base(arguments)
+        public RawSecurityDescriptorPropertyMapping(PropertyMappingArguments<T> arguments) : base(arguments)
         {
         }
 
         public override string FormatValueToFilter(object value)
         {
-            return value != null
-                       ? ((X509Certificate)value).GetRawCertData().ToStringOctet()
-                       : null;
+            if (value != null)
+            {
+                var descriptor = value as RawSecurityDescriptor;
+                var binary = new byte[descriptor.BinaryLength];
+                descriptor.GetBinaryForm(binary, 0);
+                return binary.ToStringOctet();
+            }
+
+            return null;
         }
 
         public override DirectoryAttributeModification GetDirectoryAttributeModification(object instance)
@@ -37,8 +42,13 @@ namespace LinqToLdap.Mapping.PropertyMappings
         public override object GetValueForDirectory(object instance)
         {
             var value = GetValue(instance);
+            if (value == null) return value;
 
-            return value == null ? null : ((X509Certificate)value).GetRawCertData();
+            var descriptor = value as RawSecurityDescriptor;
+            var binary = new byte[descriptor.BinaryLength];
+            descriptor.GetBinaryForm(binary, 0);
+
+            return binary;
         }
 
         public override object FormatValueFromDirectory(DirectoryAttribute value, string dn)
@@ -48,14 +58,7 @@ namespace LinqToLdap.Mapping.PropertyMappings
                 var bytes = value.GetValues(typeof(byte[]))[0] as byte[];
                 if (bytes == null) ThrowMappingException(dn);
 
-                try
-                {
-                    return X509CertificateLoader.LoadCertificate(bytes);
-                }
-                catch (Exception ex)
-                {
-                    ThrowMappingException(value, dn, ex);
-                }
+                return new RawSecurityDescriptor(bytes, 0);
             }
 
             AssertNullable(dn);

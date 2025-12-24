@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.DirectoryServices.Protocols;
 
 namespace LinqToLdap.Mapping
 {
@@ -23,11 +24,9 @@ namespace LinqToLdap.Mapping
 
         public bool FlattenHierarchy => true;
 
-#if (!NET35 && !NET40)
+        public SecurityMasks IncludeSecurityMasks => SecurityMasks.None;
+
         public System.Collections.ObjectModel.ReadOnlyDictionary<string, string> Properties => new System.Collections.ObjectModel.ReadOnlyDictionary<string, string>(new Dictionary<string, string>());
-#else
-        public Collections.ReadOnlyDictionary<string, string> Properties => new Collections.ReadOnlyDictionary<string, string>(new Dictionary<string, string>());
-#endif
 
         public IEnumerable<IPropertyMapping> GetPropertyMappings()
         {

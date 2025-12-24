@@ -1,23 +1,21 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
 
     <IsPackable>false</IsPackable>
 
-    <SignAssembly>true</SignAssembly>
-
-    <AssemblyOriginatorKeyFile>linqtoldap_tests.snk</AssemblyOriginatorKeyFile>
-
-    <DelaySign>false</DelaySign>
+	  <SignAssembly>true</SignAssembly>
+	  <AssemblyOriginatorKeyFile>D:\Users\Dale\source\repos\LinqToLdap\LinqToLdap.Tests\linqtoldap_tests.snk</AssemblyOriginatorKeyFile>
+	  <DelaySign>false</DelaySign>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.6.1" />
-    <PackageReference Include="Moq" Version="4.14.1" />
-    <PackageReference Include="MSTest.TestAdapter" Version="2.1.2" />
-    <PackageReference Include="MSTest.TestFramework" Version="2.1.2" />
-    <PackageReference Include="System.DirectoryServices.Protocols" Version="4.7.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
+    <PackageReference Include="Moq" Version="4.20.72" />
+    <PackageReference Include="MSTest.TestAdapter" Version="4.0.2" />
+    <PackageReference Include="MSTest.TestFramework" Version="4.0.2" />
+    <PackageReference Include="System.DirectoryServices.Protocols" Version="10.0.1" />
     <PackageReference Include="SharpTestsEx" Version="2.0.0" />
   </ItemGroup>
 

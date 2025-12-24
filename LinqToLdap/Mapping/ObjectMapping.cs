@@ -3,31 +3,24 @@ using LinqToLdap.Exceptions;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.DirectoryServices.Protocols;
 using System.Linq;
 
 namespace LinqToLdap.Mapping
 {
     internal abstract class ObjectMapping : IObjectMapping
     {
-#if (!NET35 && !NET40)
         private readonly System.Collections.ObjectModel.ReadOnlyDictionary<string, IPropertyMapping> _propertyMappings;
         private readonly System.Collections.ObjectModel.ReadOnlyDictionary<string, IPropertyMapping> _propertyMappingsForAdd;
         private readonly System.Collections.ObjectModel.ReadOnlyDictionary<string, IPropertyMapping> _propertyMappingsForUpdate;
         private readonly System.Collections.ObjectModel.ReadOnlyDictionary<string, IPropertyMapping> _attributePropertyMappings;
         private System.Collections.ObjectModel.ReadOnlyDictionary<string, string> _propertyNames;
-#else
-        private readonly Collections.ReadOnlyDictionary<string, IPropertyMapping> _propertyMappings;
-        private readonly Collections.ReadOnlyDictionary<string, IPropertyMapping> _propertyMappingsForAdd;
-        private readonly Collections.ReadOnlyDictionary<string, IPropertyMapping> _propertyMappingsForUpdate;
-        private readonly Collections.ReadOnlyDictionary<string, IPropertyMapping> _attributePropertyMappings;
-        private Collections.ReadOnlyDictionary<string, string> _propertyNames;
-#endif
         private readonly IPropertyMapping _distinguishedName;
         private readonly IPropertyMapping _catchAll;
         private ReadOnlyCollection<IObjectMapping> _readOnlySubTypeMappings;
 
         protected ObjectMapping(string namingContext, IEnumerable<IPropertyMapping> propertyMappings,
-            string objectCategory = null, bool includeObjectCategory = true, IEnumerable<string> objectClass = null, bool includeObjectClasses = true)
+            string objectCategory = null, bool includeObjectCategory = true, IEnumerable<string> objectClass = null, bool includeObjectClasses = true, SecurityMasks includeSecurityMasks = SecurityMasks.None)
         {
             NamingContext = namingContext;
             ObjectCategory = objectCategory;
@@ -65,6 +58,7 @@ namespace LinqToLdap.Mapping
 
             IncludeObjectCategory = includeObjectCategory;
             IncludeObjectClasses = includeObjectClasses;
+            IncludeSecurityMasks = includeSecurityMasks;
         }
 
         public IDictionary<string, IObjectMapping> SubTypeMappingsObjectClassDictionary { get; } =
@@ -82,13 +76,10 @@ namespace LinqToLdap.Mapping
         public IEnumerable<string> ObjectClasses { get; }
         public bool HasCatchAllMapping => _catchAll != null;
         public bool IncludeObjectClasses { get; }
+        public SecurityMasks IncludeSecurityMasks { get; }
         public bool HasSubTypeMappings => SubTypeMappings != null && SubTypeMappings.Count > 0;
 
-#if (!NET35 && !NET40)
         public System.Collections.ObjectModel.ReadOnlyDictionary<string, string> Properties => _propertyNames ?? (_propertyNames = InitializePropertyNames());
-#else
-        public Collections.ReadOnlyDictionary<string, string> Properties => _propertyNames ?? (_propertyNames = InitializePropertyNames());
-#endif
 
         public ReadOnlyCollection<IObjectMapping> SubTypeMappings => _readOnlySubTypeMappings ??
             (_readOnlySubTypeMappings = new ReadOnlyCollection<IObjectMapping>(SubTypeMappingsObjectClassDictionary.Values.ToList()));
@@ -198,12 +189,7 @@ namespace LinqToLdap.Mapping
             _propertyNames = InitializePropertyNames();
         }
 
-#if (!NET35 && !NET40)
-
         private System.Collections.ObjectModel.ReadOnlyDictionary<string, string> InitializePropertyNames()
-#else
-        private Collections.ReadOnlyDictionary<string, string> InitializePropertyNames()
-#endif
         {
             var properties = _propertyMappings.ToDictionary(x => x.Key, x => x.Value.AttributeName, StringComparer.OrdinalIgnoreCase);
 
@@ -221,11 +207,7 @@ namespace LinqToLdap.Mapping
                 }
             }
 
-#if (!NET35 && !NET40)
             return new System.Collections.ObjectModel.ReadOnlyDictionary<string, string>(properties);
-#else
-            return new Collections.ReadOnlyDictionary<string, string>(properties);
-#endif
         }
 
         private List<IObjectMapping> SortByInheritanceDescending(IEnumerable<IObjectMapping> mappings)

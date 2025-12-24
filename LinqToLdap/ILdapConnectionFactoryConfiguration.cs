@@ -73,5 +73,28 @@ namespace LinqToLdap
         /// </summary>
         /// <returns></returns>
         ILdapConnectionFactoryConfiguration UseUdp();
+
+        /// <summary>
+        /// Enables sealing (encryption) for the LDAP connection. This encrypts the data sent over the connection.
+        /// Requires Kerberos or NTLM authentication.
+        /// </summary>
+        /// <returns></returns>
+        ILdapConnectionFactoryConfiguration UseSealing();
+
+        /// <summary>
+        /// Enables signing (integrity protection) for the LDAP connection. This ensures data integrity.
+        /// Requires Kerberos or NTLM authentication.
+        /// </summary>
+        /// <returns></returns>
+        ILdapConnectionFactoryConfiguration UseSigning();
+
+        /// <summary>
+        /// Disables SSL/TLS certificate validation. This allows connections to servers with self-signed 
+        /// or invalid certificates.
+        /// WARNING: This should ONLY be used in development/testing environments as it makes 
+        /// the connection vulnerable to man-in-the-middle attacks.
+        /// </summary>
+        /// <returns></returns>
+        ILdapConnectionFactoryConfiguration IgnoreSslCertificateErrors();
     }
 }

@@ -13,11 +13,9 @@ namespace LinqToLdap
         private bool _disposed;
         private IObjectMapping _mapping;
         private readonly SearchScope _scope;
-#if (NET35 || NET40)
-            private WeakReference _connection;
-#else
+
         private WeakReference<LdapConnection> _connection;
-#endif
+
         private readonly bool _pagingEnabled;
 
         public DirectoryQueryProvider(LdapConnection connection, SearchScope scope, IObjectMapping mapping, bool pagingEnabled)
@@ -26,11 +24,8 @@ namespace LinqToLdap
             if (connection == null) throw new ArgumentNullException("connection");
 
             _scope = scope;
-#if (NET35 || NET40)
-                _connection = new WeakReference(connection);
-#else
+
             _connection = new WeakReference<LdapConnection>(connection);
-#endif
 
             _mapping = mapping;
             _pagingEnabled = pagingEnabled;
@@ -68,17 +63,12 @@ namespace LinqToLdap
                 var command = TranslateExpression(expression);
 
                 LdapConnection connection;
-#if (NET35 || NET40)
-                    if (!_connection.IsAlive || (connection = _connection.Target as LdapConnection) == null)
-                    {
-                        throw new ObjectDisposedException("_connection", "The LdapConnection associated with this provider has been disposed.");
-                    }
-#else
+
                 if (!_connection.TryGetTarget(out connection))
                 {
                     throw new ObjectDisposedException("_connection", "The LdapConnection associated with this provider has been disposed.");
                 }
-#endif
+
                 return command.Execute(connection, _scope, MaxPageSize, _pagingEnabled, Log, NamingContext);
             }
             catch (Exception ex)
@@ -87,8 +77,6 @@ namespace LinqToLdap
                 throw;
             }
         }
-
-#if (!NET35 && !NET40)
 
         public override async System.Threading.Tasks.Task<object> ExecuteAsync(Expression expression)
         {
@@ -111,8 +99,6 @@ namespace LinqToLdap
                 throw;
             }
         }
-
-#endif
 
         ~DirectoryQueryProvider()
         {

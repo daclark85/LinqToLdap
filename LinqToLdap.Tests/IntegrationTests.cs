@@ -189,7 +189,7 @@ namespace LinqToLdap.Tests
 
     public class IntegrationUserTestMapping : ClassMap<IntegrationUserTest>
     {
-        public override IClassMap PerformMapping(string namingContext = null, string objectCategory = null, bool includeObjectCategory = true, IEnumerable<string> objectClasses = null, bool includeObjectClasses = true)
+        public override IClassMap PerformMapping(string namingContext = null, string objectCategory = null, bool includeObjectCategory = true, IEnumerable<string> objectClasses = null, bool includeObjectClasses = true, SecurityMasks includeSecurityMasks = System.DirectoryServices.Protocols.SecurityMasks.None)
         {
             ObjectCategory(objectCategory);
             ObjectClasses(objectClasses);
@@ -679,28 +679,64 @@ namespace LinqToLdap.Tests
             //prepare
             var readerGroup = _context.Query<IntegrationGroupTest>()
                 .FirstOrDefault(c => c.CommonName == "Readers");
-            readerGroup.Should().Not.Be.Null();
-            readerGroup.Member.Should().Be.Null();
-            var user = _context.Query<IntegrationUserTest>().FirstOrDefault();
-            user.Should().Not.Be.Null();
-            readerGroup.Member = new Collection<string>(new List<string> { user.DistinguishedName });
+            
+            // Create the Readers group if it doesn't exist
+            bool createdGroup = false;
+            if (readerGroup == null)
+            {
+                var newGroup = new IntegrationGroupTest();
+                newGroup.SetDistinguishedName("Readers");
+                readerGroup = _context.AddAndGet(newGroup);
+                createdGroup = true;
+            }
+            
+            // Ensure the group has no members initially
+            if (readerGroup.Member != null && readerGroup.Member.Any())
+            {
+                readerGroup.Member.Clear();
+                readerGroup = _context.UpdateAndGet(readerGroup);
+            }
+            
+            try
+            {
+                readerGroup.Should().Not.Be.Null();
+                readerGroup.Member.Should().Be.Null();
+                var user = _context.Query<IntegrationUserTest>().FirstOrDefault();
+                user.Should().Not.Be.Null();
+                readerGroup.Member = new Collection<string>(new List<string> { user.DistinguishedName });
 
-            //act
-            var updated = _context.UpdateAndGet(readerGroup);
+                //act
+                var updated = _context.UpdateAndGet(readerGroup);
 
-            //assert
-            updated.Should().Not.Be.SameInstanceAs(readerGroup);
-            updated.Member.Should().Contain(user.DistinguishedName);
+                //assert
+                updated.Should().Not.Be.SameInstanceAs(readerGroup);
+                updated.Member.Should().Contain(user.DistinguishedName);
 
-            //prepare
-            updated.Member.Clear();
+                //prepare
+                updated.Member.Clear();
 
-            //act
-            var updatedAgain = _context.UpdateAndGet(updated);
+                //act
+                var updatedAgain = _context.UpdateAndGet(updated);
 
-            //assert
-            updatedAgain.Should().Not.Be.SameInstanceAs(updated);
-            updatedAgain.Member.Should().Be.Null();
+                //assert
+                updatedAgain.Should().Not.Be.SameInstanceAs(updated);
+                updatedAgain.Member.Should().Be.Null();
+            }
+            finally
+            {
+                // Clean up: delete the group if we created it
+                if (createdGroup)
+                {
+                    try
+                    {
+                        _context.Delete(readerGroup.DistinguishedName);
+                    }
+                    catch
+                    {
+                        // Ignore cleanup errors
+                    }
+                }
+            }
         }
 
         [TestMethod]

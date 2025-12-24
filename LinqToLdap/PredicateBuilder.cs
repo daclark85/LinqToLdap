@@ -95,11 +95,7 @@ namespace LinqToLdap
             {
                 return appendExpression;
             }
-#if NET35
-            var invokedExpr = Expression.Invoke(appendExpression, sourceExpression.Parameters.Cast<Expression>());
-#else
             var invokedExpr = Expression.Invoke(appendExpression, sourceExpression.Parameters);
-#endif
             return Expression.Lambda<Func<T, bool>>(
                 Expression.OrElse(sourceExpression.Body, invokedExpr), sourceExpression.Parameters);
         }
@@ -119,11 +115,8 @@ namespace LinqToLdap
             {
                 return appendExpression;
             }
-#if NET35
-            var invokedExpr = Expression.Invoke(appendExpression, sourceExpression.Parameters.Cast<Expression>());
-#else
+
             var invokedExpr = Expression.Invoke(appendExpression, sourceExpression.Parameters);
-#endif
 
             return Expression.Lambda<Func<T, bool>>(
                 Expression.AndAlso(sourceExpression.Body, invokedExpr), sourceExpression.Parameters);
@@ -237,12 +230,7 @@ namespace LinqToLdap
             return constant;
         }
 
-#if NET35
-        private static LinqToLdap.Helpers.ThreeTuple<ParameterExpression, Type, Expression> GetParameterExpression(
-#else
-
         private static Tuple<ParameterExpression, Type, Expression> GetParameterExpression(
-#endif
             Type type, string propertyName)
         {
             string[] props = propertyName.Split('.');
@@ -255,11 +243,7 @@ namespace LinqToLdap
                 expr = Expression.Property(expr, pi);
                 propertyType = pi.PropertyType;
             }
-#if NET35
-            return new LinqToLdap.Helpers.ThreeTuple<ParameterExpression, Type, Expression>(arg, propertyType, expr);
-#else
             return new Tuple<ParameterExpression, Type, Expression>(arg, propertyType, expr);
-#endif
         }
 
         #endregion Support methods

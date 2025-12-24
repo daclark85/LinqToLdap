@@ -2,6 +2,8 @@
 using System;
 using System.DirectoryServices.Protocols;
 using System.Net;
+using System.Net.Security;
+using System.Security.Cryptography.X509Certificates;
 
 namespace LinqToLdap
 {
@@ -137,6 +139,27 @@ namespace LinqToLdap
                 connection.SessionOptions.ProtocolVersion = LdapProtocolVersion;
                 connection.SessionOptions.SecureSocketLayer = UsesSsl;
                 connection.Timeout = Timeout;
+                
+                // Add sealing and signing support
+                if (Sealing)
+                {
+                    connection.SessionOptions.Sealing = true;
+                }
+                
+                if (Signing)
+                {
+                    connection.SessionOptions.Signing = true;
+                }
+
+                // Configure certificate validation callback if requested
+                if (_IgnoreSslCertificateErrors)
+                {
+                    connection.SessionOptions.VerifyServerCertificate = 
+                        new VerifyServerCertificateCallback((conn, cert) => true);
+                    
+                    if (Logger?.TraceEnabled == true)
+                        Logger.Trace("SSL Certificate validation disabled (IgnoreSslCertificateErrors = true)");
+                }
 
                 if (Logger != null && Logger.TraceEnabled) Logger.Trace("Connection Built");
 
@@ -201,5 +224,22 @@ namespace LinqToLdap
         /// Gets or sets the logger.
         /// </summary>
         public ILinqToLdapLogger Logger { get; set; }
+
+        // Add protected properties
+        /// <summary>
+        /// Indicates if the connection should use sealing (encryption).
+        /// </summary>
+        protected bool Sealing { get; set; }
+
+        /// <summary>
+        /// Indicates if the connection should use signing (integrity protection).
+        /// </summary>
+        protected bool Signing { get; set; }
+
+        /// <summary>
+        /// Indicates if SSL/TLS certificate validation errors should be ignored.
+        /// WARNING: Only use this in development/testing environments!
+        /// </summary>
+        protected bool _IgnoreSslCertificateErrors { get; set; }
     }
 }

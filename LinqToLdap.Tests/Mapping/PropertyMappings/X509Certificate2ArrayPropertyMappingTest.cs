@@ -46,7 +46,7 @@ namespace LinqToLdap.Tests.Mapping.PropertyMappings
         public void FormatValueToFilter_X509Certificate2Array_ThrowsNotSupportedException()
         {
             //prepare
-            var certs = new[] { new X509Certificate2(Resources.cert), new X509Certificate2(Resources.cert) };
+            var certs = new[] {X509CertificateLoader.LoadCertificate(Resources.cert), X509CertificateLoader.LoadCertificate(Resources.cert) };
             var propertyMapping = new X509Certificate2ArrayPropertyMapping<X509Certificate2ArrayPropertyMappingTest>(_mappingArguments);
 
             //act
@@ -58,7 +58,7 @@ namespace LinqToLdap.Tests.Mapping.PropertyMappings
         public void FormatValueToFilter_X509CertificateArray_ThrowsNotSupportedException()
         {
             //prepare
-            var certs = new[] { new X509Certificate(Resources.cert), new X509Certificate(Resources.cert) };
+            var certs = new[] { X509CertificateLoader.LoadCertificate(Resources.cert), X509CertificateLoader.LoadCertificate(Resources.cert) };
             var propertyMapping = new X509Certificate2ArrayPropertyMapping<X509Certificate2ArrayPropertyMappingTest>(_mappingArguments);
 
             //act
@@ -70,7 +70,7 @@ namespace LinqToLdap.Tests.Mapping.PropertyMappings
         public void FormatValueToFilter_X509Certificate2_ReturnsStringOctet()
         {
             //prepare
-            var certs = new X509Certificate2(Resources.cert);
+            var certs = X509CertificateLoader.LoadCertificate(Resources.cert);
             var propertyMapping = new X509Certificate2ArrayPropertyMapping<X509Certificate2ArrayPropertyMappingTest>(_mappingArguments);
 
             //act
@@ -84,7 +84,7 @@ namespace LinqToLdap.Tests.Mapping.PropertyMappings
         public void FormatValueToFilter_X509Certificate_ReturnsStringOctet()
         {
             //prepare
-            var certs = new X509Certificate(Resources.cert);
+            var certs = X509CertificateLoader.LoadCertificate(Resources.cert);
             var propertyMapping = new X509Certificate2ArrayPropertyMapping<X509Certificate2ArrayPropertyMappingTest>(_mappingArguments);
 
             //act
@@ -99,7 +99,7 @@ namespace LinqToLdap.Tests.Mapping.PropertyMappings
         {
             //prepare
             _mappingArguments.PropertyType = typeof(X509Certificate2[]);
-            var certs = new[] { new X509Certificate2(Resources.cert), new X509Certificate2(Resources.cert) };
+            var certs = new[] { X509CertificateLoader.LoadCertificate(Resources.cert), X509CertificateLoader.LoadCertificate(Resources.cert) };
             var propertyMapping = new X509Certificate2ArrayPropertyMapping<X509Certificate2ArrayPropertyMappingTest>(_mappingArguments);
 
             //act
@@ -114,7 +114,7 @@ namespace LinqToLdap.Tests.Mapping.PropertyMappings
         {
             //prepare
             _mappingArguments.PropertyType = typeof(X509Certificate[]);
-            var certs = new[] { new X509Certificate(Resources.cert), new X509Certificate(Resources.cert) };
+            var certs = new[] { X509CertificateLoader.LoadCertificate(Resources.cert), X509CertificateLoader.LoadCertificate(Resources.cert) };
             var propertyMapping = new X509Certificate2ArrayPropertyMapping<X509Certificate2ArrayPropertyMappingTest>(_mappingArguments);
 
             //act
@@ -142,7 +142,7 @@ namespace LinqToLdap.Tests.Mapping.PropertyMappings
         public void FormatValueFromDirectory_SingleX509Certificate2_ReturnsAsX509Certificate2Array()
         {
             //prepare
-            var certs = new X509Certificate2(Resources.cert);
+            var certs = X509CertificateLoader.LoadCertificate(Resources.cert);
             _mappingArguments.PropertyType = typeof(X509Certificate2[]);
             var propertyMapping = new X509Certificate2ArrayPropertyMapping<X509Certificate2ArrayPropertyMappingTest>(_mappingArguments);
 
@@ -157,7 +157,7 @@ namespace LinqToLdap.Tests.Mapping.PropertyMappings
         public void FormatValueFromDirectory_SingleX509Certificate_ReturnsAsX509Certificate2Array()
         {
             //prepare
-            var certs = new X509Certificate(Resources.cert);
+            var certs = X509CertificateLoader.LoadCertificate(Resources.cert);
             _mappingArguments.PropertyType = typeof(X509Certificate[]);
             var propertyMapping = new X509Certificate2ArrayPropertyMapping<X509Certificate2ArrayPropertyMappingTest>(_mappingArguments);
 
@@ -172,11 +172,11 @@ namespace LinqToLdap.Tests.Mapping.PropertyMappings
         public void IsEqual_SameLengthDifferentArrays_ReturnsFalse()
         {
             //prepare
-            _mappingArguments.Getter = t => new[] { new X509Certificate2(Resources.cert), new X509Certificate2(Resources.cert) };
+            _mappingArguments.Getter = t => new[] { X509CertificateLoader.LoadCertificate(Resources.cert), X509CertificateLoader.LoadCertificate(Resources.cert) };
             var propertyMapping = new X509Certificate2ArrayPropertyMapping<X509Certificate2ArrayPropertyMappingTest>(_mappingArguments);
             DirectoryAttributeModification modification;
             //act
-            var value = propertyMapping.IsEqual(this, new[] { new X509Certificate2(Resources.cert), new X509Certificate2(Resources.cert2) }, out modification);
+            var value = propertyMapping.IsEqual(this, new[] { X509CertificateLoader.LoadCertificate(Resources.cert), X509CertificateLoader.LoadCertificate(Resources.cert2) }, out modification);
 
             //assert
             value.Should().Be.False();
@@ -187,11 +187,11 @@ namespace LinqToLdap.Tests.Mapping.PropertyMappings
         public void IsEqual_DifferentLengths_ReturnsFalse()
         {
             //prepare
-            _mappingArguments.Getter = t => new[] { new X509Certificate2(Resources.cert), new X509Certificate2(Resources.cert) };
+            _mappingArguments.Getter = t => new[] { X509CertificateLoader.LoadCertificate(Resources.cert), X509CertificateLoader.LoadCertificate(Resources.cert) };
             var propertyMapping = new X509Certificate2ArrayPropertyMapping<X509Certificate2ArrayPropertyMappingTest>(_mappingArguments);
             DirectoryAttributeModification modification;
             //act
-            var value = propertyMapping.IsEqual(this, new[] { new X509Certificate2(Resources.cert) }, out modification);
+            var value = propertyMapping.IsEqual(this, new[] { X509CertificateLoader.LoadCertificate(Resources.cert) }, out modification);
 
             //assert
             value.Should().Be.False();
@@ -206,7 +206,7 @@ namespace LinqToLdap.Tests.Mapping.PropertyMappings
             var propertyMapping = new X509Certificate2ArrayPropertyMapping<X509Certificate2ArrayPropertyMappingTest>(_mappingArguments);
             DirectoryAttributeModification modification;
             //act
-            var value = propertyMapping.IsEqual(this, new[] { new X509Certificate2(Resources.cert) }, out modification);
+            var value = propertyMapping.IsEqual(this, new[] { X509CertificateLoader.LoadCertificate(Resources.cert) }, out modification);
 
             //assert
             value.Should().Be.False();
@@ -217,11 +217,11 @@ namespace LinqToLdap.Tests.Mapping.PropertyMappings
         public void IsEqual_SameArrays_ReturnsTrue()
         {
             //prepare
-            _mappingArguments.Getter = t => new[] { new X509Certificate2(Resources.cert), new X509Certificate2(Resources.cert2) };
+            _mappingArguments.Getter = t => new[] { X509CertificateLoader.LoadCertificate(Resources.cert), X509CertificateLoader.LoadCertificate(Resources.cert2) };
             var propertyMapping = new X509Certificate2ArrayPropertyMapping<X509Certificate2ArrayPropertyMappingTest>(_mappingArguments);
             DirectoryAttributeModification modification;
             //act
-            var value = propertyMapping.IsEqual(this, new[] { new X509Certificate2(Resources.cert), new X509Certificate2(Resources.cert2) }, out modification);
+            var value = propertyMapping.IsEqual(this, new[] { X509CertificateLoader.LoadCertificate(Resources.cert), X509CertificateLoader.LoadCertificate(Resources.cert2) }, out modification);
 
             //assert
             value.Should().Be.True();

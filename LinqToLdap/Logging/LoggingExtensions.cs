@@ -30,11 +30,7 @@ namespace LinqToLdap.Logging
             var sb = new StringBuilder();
             sb.AppendLine("Search Request >");
             sb.AppendLine("Filter: " + searchRequest.Filter);
-#if NET35
-            sb.AppendLine("Attributes: " + string.Join(", ", searchRequest.Attributes.Cast<string>().ToArray()));
-#else
             sb.AppendLine("Attributes: " + string.Join(", ", searchRequest.Attributes.Cast<string>()));
-#endif
             sb.AppendLine("Naming Context: " + searchRequest.DistinguishedName);
             sb.AppendLine("Scope: " + searchRequest.Scope);
             sb.AppendLine("Types Only: " + searchRequest.TypesOnly);
@@ -52,11 +48,7 @@ namespace LinqToLdap.Logging
             var sb = new StringBuilder();
             sb.AppendLine("Add Request >");
             sb.AppendLine("Distinguished Name: " + addRequest.DistinguishedName);
-#if NET35
-            sb.AppendLine("Attributes: " + string.Join(", ", addRequest.Attributes.Cast<DirectoryAttribute>().Select(FormatDirectoryAttribute).ToArray()));
-#else
             sb.AppendLine("Attributes: " + string.Join(", ", addRequest.Attributes.Cast<DirectoryAttribute>().Select(FormatDirectoryAttribute)));
-#endif
             sb.AppendLine("Request ID: " + addRequest.RequestId);
             sb.AppendLine("Controls: ");
             foreach (DirectoryControl control in addRequest.Controls)
@@ -87,11 +79,7 @@ namespace LinqToLdap.Logging
             var sb = new StringBuilder();
             sb.AppendLine("Modify Request >");
             sb.AppendLine("Distinguished Name: " + modifyRequest.DistinguishedName);
-#if NET35
-            sb.AppendLine("Attributes: " + string.Join(", ", modifyRequest.Modifications.Cast<DirectoryAttributeModification>().Select(FormatDirectoryAttribute).ToArray()));
-#else
             sb.AppendLine("Attributes: " + string.Join(", ", modifyRequest.Modifications.Cast<DirectoryAttributeModification>().Select(FormatDirectoryAttribute)));
-#endif
             sb.AppendLine("Request ID: " + modifyRequest.RequestId);
             sb.AppendLine("Controls: ");
             foreach (DirectoryControl control in modifyRequest.Controls)
@@ -178,23 +166,13 @@ namespace LinqToLdap.Logging
 
                     if (type == typeof(string))
                     {
-#if NET35
-                        return string.Format(AttributeFormat, directoryAttribute.Name,
-                                             string.Join(" ", directoryAttribute.Cast<string>().ToArray()));
-#else
                         return string.Format(AttributeFormat, directoryAttribute.Name,
                                              string.Join(" ", directoryAttribute.Cast<string>()));
-#endif
                     }
                     if (type == typeof(byte[]))
                     {
-#if NET35
-                        return string.Format(AttributeFormat, directoryAttribute.Name,
-                                             string.Join(" ", directoryAttribute.Cast<byte[]>().Select(b => b.ToStringOctet()).ToArray()));
-#else
                         return string.Format(AttributeFormat, directoryAttribute.Name,
                                              string.Join(" ", directoryAttribute.Cast<byte[]>().Select(b => b.ToStringOctet())));
-#endif
                     }
                 }
 
@@ -224,19 +202,11 @@ namespace LinqToLdap.Logging
 
                     if (type == typeof(string))
                     {
-#if NET35
-                        value = string.Join(" ", directoryAttribute.Cast<string>().ToArray());
-#else
                         value = string.Join(" ", directoryAttribute.Cast<string>());
-#endif
                     }
                     else if (type == typeof(byte[]))
                     {
-#if NET35
-                        value = string.Join(" ", directoryAttribute.Cast<byte[]>().Select(b => b.ToStringOctet()).ToArray());
-#else
                         value = string.Join(" ", directoryAttribute.Cast<byte[]>().Select(b => b.ToStringOctet()));
-#endif
                     }
                 }
                 else if (directoryAttribute.Count > 0)

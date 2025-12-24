@@ -47,7 +47,7 @@ namespace LinqToLdap.Tests.Mapping.PropertyMappings
         public void FormatValueToFilter_X509Certificate2Collection_ThrowsNotSupportedException()
         {
             //prepare
-            var certs = new Collection<X509Certificate2>(new[] { new X509Certificate2(Resources.cert), new X509Certificate2(Resources.cert) });
+            var certs = new Collection<X509Certificate2>(new[] { X509CertificateLoader.LoadCertificate(Resources.cert), X509CertificateLoader.LoadCertificate(Resources.cert) });
             var propertyMapping = new X509Certificate2CollectionPropertyMapping<X509Certificate2CollectionPropertyMappingTest>(_mappingArguments);
 
             //act
@@ -59,7 +59,7 @@ namespace LinqToLdap.Tests.Mapping.PropertyMappings
         public void FormatValueToFilter_X509CertificateCollection_ThrowsNotSupportedException()
         {
             //prepare
-            var certs = new[] { new X509Certificate(Resources.cert), new X509Certificate(Resources.cert) };
+            var certs = new[] { X509CertificateLoader.LoadCertificate(Resources.cert), X509CertificateLoader.LoadCertificate(Resources.cert) };
             var propertyMapping = new X509Certificate2CollectionPropertyMapping<X509Certificate2CollectionPropertyMappingTest>(_mappingArguments);
 
             //act
@@ -71,7 +71,7 @@ namespace LinqToLdap.Tests.Mapping.PropertyMappings
         public void FormatValueToFilter_X509Certificate2_ReturnsStringOctet()
         {
             //prepare
-            var certs = new X509Certificate2(Resources.cert);
+            var certs = X509CertificateLoader.LoadCertificate(Resources.cert);
             var propertyMapping = new X509Certificate2CollectionPropertyMapping<X509Certificate2CollectionPropertyMappingTest>(_mappingArguments);
 
             //act
@@ -85,7 +85,7 @@ namespace LinqToLdap.Tests.Mapping.PropertyMappings
         public void FormatValueToFilter_X509Certificate_ReturnsStringOctet()
         {
             //prepare
-            var certs = new X509Certificate(Resources.cert);
+            var certs = X509CertificateLoader.LoadCertificate(Resources.cert);
             var propertyMapping = new X509Certificate2CollectionPropertyMapping<X509Certificate2CollectionPropertyMappingTest>(_mappingArguments);
 
             //act
@@ -100,7 +100,7 @@ namespace LinqToLdap.Tests.Mapping.PropertyMappings
         {
             //prepare
             _mappingArguments.PropertyType = typeof(Collection<X509Certificate2>);
-            var certs = new Collection<X509Certificate2>(new[] { new X509Certificate2(Resources.cert), new X509Certificate2(Resources.cert) });
+            var certs = new Collection<X509Certificate2>(new[] { X509CertificateLoader.LoadCertificate(Resources.cert), X509CertificateLoader.LoadCertificate(Resources.cert) });
             var propertyMapping = new X509Certificate2CollectionPropertyMapping<X509Certificate2CollectionPropertyMappingTest>(_mappingArguments);
 
             //act
@@ -115,7 +115,7 @@ namespace LinqToLdap.Tests.Mapping.PropertyMappings
         {
             //prepare
             _mappingArguments.PropertyType = typeof(Collection<X509Certificate>);
-            var certs = new[] { new X509Certificate(Resources.cert), new X509Certificate(Resources.cert) };
+            var certs = new[] { X509CertificateLoader.LoadCertificate(Resources.cert), X509CertificateLoader.LoadCertificate(Resources.cert) };
             var propertyMapping = new X509Certificate2CollectionPropertyMapping<X509Certificate2CollectionPropertyMappingTest>(_mappingArguments);
 
             //act
@@ -143,7 +143,7 @@ namespace LinqToLdap.Tests.Mapping.PropertyMappings
         public void FormatValueFromDirectory_SingleX509Certificate2_ReturnsAsX509Certificate2Collection()
         {
             //prepare
-            var certs = new X509Certificate2(Resources.cert);
+            var certs = X509CertificateLoader.LoadCertificate(Resources.cert);
             _mappingArguments.PropertyType = typeof(Collection<X509Certificate2>);
             var propertyMapping = new X509Certificate2CollectionPropertyMapping<X509Certificate2CollectionPropertyMappingTest>(_mappingArguments);
 
@@ -158,7 +158,7 @@ namespace LinqToLdap.Tests.Mapping.PropertyMappings
         public void FormatValueFromDirectory_SingleX509Certificate_ReturnsAsX509Certificate2Collection()
         {
             //prepare
-            var certs = new X509Certificate(Resources.cert);
+            var certs = (X509Certificate)X509CertificateLoader.LoadCertificate(Resources.cert);
             _mappingArguments.PropertyType = typeof(Collection<X509Certificate>);
             var propertyMapping = new X509Certificate2CollectionPropertyMapping<X509Certificate2CollectionPropertyMappingTest>(_mappingArguments);
 
@@ -174,11 +174,11 @@ namespace LinqToLdap.Tests.Mapping.PropertyMappings
         {
             //prepare
             _mappingArguments.PropertyType = typeof(Collection<X509Certificate2>);
-            _mappingArguments.Getter = t => new Collection<X509Certificate2>(new[] { new X509Certificate2(Resources.cert), new X509Certificate2(Resources.cert) });
+            _mappingArguments.Getter = t => new Collection<X509Certificate2>(new[] { X509CertificateLoader.LoadCertificate(Resources.cert), X509CertificateLoader.LoadCertificate(Resources.cert) });
             var propertyMapping = new X509Certificate2CollectionPropertyMapping<X509Certificate2CollectionPropertyMappingTest>(_mappingArguments);
             DirectoryAttributeModification modification;
             //act
-            var value = propertyMapping.IsEqual(this, new Collection<X509Certificate2>(new[] { new X509Certificate2(Resources.cert), new X509Certificate2(Resources.cert2) }), out modification);
+            var value = propertyMapping.IsEqual(this, new Collection<X509Certificate2>(new[] { X509CertificateLoader.LoadCertificate(Resources.cert), X509CertificateLoader.LoadCertificate(Resources.cert2) }), out modification);
 
             //assert
             value.Should().Be.False();
@@ -190,11 +190,11 @@ namespace LinqToLdap.Tests.Mapping.PropertyMappings
         {
             //prepare
             _mappingArguments.PropertyType = typeof(Collection<X509Certificate2>);
-            _mappingArguments.Getter = t => new Collection<X509Certificate2>(new[] { new X509Certificate2(Resources.cert), new X509Certificate2(Resources.cert) });
+            _mappingArguments.Getter = t => new Collection<X509Certificate2>(new[] { X509CertificateLoader.LoadCertificate(Resources.cert), X509CertificateLoader.LoadCertificate(Resources.cert) });
             var propertyMapping = new X509Certificate2CollectionPropertyMapping<X509Certificate2CollectionPropertyMappingTest>(_mappingArguments);
             DirectoryAttributeModification modification;
             //act
-            var value = propertyMapping.IsEqual(this, new Collection<X509Certificate2>(new[] { new X509Certificate2(Resources.cert) }), out modification);
+            var value = propertyMapping.IsEqual(this, new Collection<X509Certificate2>(new[] { X509CertificateLoader.LoadCertificate(Resources.cert) }), out modification);
 
             //assert
             value.Should().Be.False();
@@ -210,7 +210,7 @@ namespace LinqToLdap.Tests.Mapping.PropertyMappings
             var propertyMapping = new X509Certificate2CollectionPropertyMapping<X509Certificate2CollectionPropertyMappingTest>(_mappingArguments);
             DirectoryAttributeModification modification;
             //act
-            var value = propertyMapping.IsEqual(this, new Collection<X509Certificate2>(new[] { new X509Certificate2(Resources.cert) }), out modification);
+            var value = propertyMapping.IsEqual(this, new Collection<X509Certificate2>(new[] { X509CertificateLoader.LoadCertificate(Resources.cert) }), out modification);
 
             //assert
             value.Should().Be.False();
@@ -222,11 +222,11 @@ namespace LinqToLdap.Tests.Mapping.PropertyMappings
         {
             //prepare
             _mappingArguments.PropertyType = typeof(Collection<X509Certificate>);
-            _mappingArguments.Getter = t => new Collection<X509Certificate>(new[] { new X509Certificate2(Resources.cert), new X509Certificate2(Resources.cert2) });
+            _mappingArguments.Getter = t => new Collection<X509Certificate>(new[] { X509CertificateLoader.LoadCertificate(Resources.cert), X509CertificateLoader.LoadCertificate(Resources.cert2) });
             var propertyMapping = new X509Certificate2CollectionPropertyMapping<X509Certificate2CollectionPropertyMappingTest>(_mappingArguments);
             DirectoryAttributeModification modification;
             //act
-            var value = propertyMapping.IsEqual(this, new Collection<X509Certificate>(new[] { new X509Certificate2(Resources.cert), new X509Certificate2(Resources.cert2) }), out modification);
+            var value = propertyMapping.IsEqual(this, new Collection<X509Certificate>(new[] { X509CertificateLoader.LoadCertificate(Resources.cert), X509CertificateLoader.LoadCertificate(Resources.cert2) }), out modification);
 
             //assert
             value.Should().Be.True();

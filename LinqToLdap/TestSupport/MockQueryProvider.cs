@@ -98,8 +98,6 @@ namespace LinqToLdap.TestSupport
                 : (TResult)ResultsToReturn[_executionCount++];
         }
 
-#if !NET35 && !NET40
-
         /// <summary>
         /// Sets <see cref="CurrentExpression"/> equal to <paramref name="expression"/> and adds it to <see cref="ExecutedExpressions"/>. Returns the a result from <see cref="ResultsToReturn"/> based on the number of execution calls that have occurred.
         /// </summary>
@@ -120,7 +118,5 @@ namespace LinqToLdap.TestSupport
         {
             return System.Threading.Tasks.Task.FromResult(Execute<TResult>(expression));
         }
-
-#endif
     }
 }

@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.DirectoryServices.Protocols;
 using LinqToLdap.Mapping;
 
 namespace LinqToLdap.Tests.ClassMapAssembly
@@ -31,7 +32,7 @@ namespace LinqToLdap.Tests.ClassMapAssembly
     public class AssemblyTestClassMap : ClassMap<AssemblyTestClass>
     {
         public override IClassMap PerformMapping(string namingContext = null, string objectCategory = null, 
-            bool includeObjectCategory = true, IEnumerable<string> objectClasses = null, bool includeObjectClasses = true)
+            bool includeObjectCategory = true, IEnumerable<string> objectClasses = null, bool includeObjectClasses = true, SecurityMasks includeSecurityMasks = System.DirectoryServices.Protocols.SecurityMasks.None)
         {
             NamingContext("name");
 
@@ -50,7 +51,7 @@ namespace LinqToLdap.Tests.ClassMapAssembly
         {
         }
 
-        public override IClassMap PerformMapping(string namingContext = null, string objectCategory = null, bool includeObjectCategory = true, IEnumerable<string> objectClasses = null, bool includeObjectClasses = true)
+        public override IClassMap PerformMapping(string namingContext = null, string objectCategory = null, bool includeObjectCategory = true, IEnumerable<string> objectClasses = null, bool includeObjectClasses = true, SecurityMasks includeSecurityMasks = System.DirectoryServices.Protocols.SecurityMasks.None)
         {
             NamingContext("name2");
 

@@ -1,9 +1,11 @@
 ﻿using LinqToLdap.Collections;
 using LinqToLdap.Mapping.PropertyMappingBuilders;
+using LinqToLdap.Types;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq.Expressions;
+using System.Security.AccessControl;
 using System.Security.Cryptography.X509Certificates;
 using System.Security.Principal;
 
@@ -513,6 +515,34 @@ namespace LinqToLdap.Mapping
             var propertyInfo = GetPropertyInfo(property.Body);
 
             return Map<SecurityIdentifier>(propertyInfo);
+        }
+
+        /// <summary>
+        /// Create a property mapping.
+        /// </summary>
+        /// <param name="property">Property to map</param>
+        /// <example>
+        /// Map(x => x.SecurityDescriptor);
+        /// </example>
+        protected IPropertyMapperGeneric<RawSecurityDescriptor> Map(Expression<Func<T, RawSecurityDescriptor>> property)
+        {
+            var propertyInfo = GetPropertyInfo(property.Body);
+
+            return Map<RawSecurityDescriptor>(propertyInfo);
+        }
+
+        /// <summary>
+        /// Create a property mapping.
+        /// </summary>
+        /// <param name="property">Property to map</param>
+        /// <example>
+        /// Map(x => x.PwdLastSet);
+        /// </example>
+        protected IPropertyMapperGeneric<PwdLastSetValue> Map(Expression<Func<T, PwdLastSetValue>> property)
+        {
+            var propertyInfo = GetPropertyInfo(property.Body);
+
+            return Map<PwdLastSetValue>(propertyInfo);
         }
 
         /// <summary>

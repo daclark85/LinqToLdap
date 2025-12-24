@@ -8,11 +8,7 @@ namespace LinqToLdap.Helpers
 {
     internal static class ObjectActivator
     {
-#if (NET35 || NET40)
-        private readonly static LinqToLdap.Collections.SafeDictionary<string, UnknownCtorWithParams> _constructors = new LinqToLdap.Collections.SafeDictionary<string, UnknownCtorWithParams>();
-#else
         private readonly static System.Collections.Concurrent.ConcurrentDictionary<string, UnknownCtorWithParams> _constructors = new System.Collections.Concurrent.ConcurrentDictionary<string, UnknownCtorWithParams>();
-#endif
 
         public static object CreateGenericInstance(Type instanceType, Type genericParameterType, object[] parameters, string key)
         {

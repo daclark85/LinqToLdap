@@ -32,30 +32,7 @@ namespace LinqToLdap.Mapping.PropertyMappings
                 Name = AttributeName,
                 Operation = DirectoryAttributeOperation.Replace
             };
-#if NET35
-            if (_isX5092)
-            {
-                var value = (IEnumerable<X509Certificate2>)GetValueForDirectory(instance);
-                if (value != null)
-                {
-                    foreach (var b in value)
-                    {
-                        modification.Add(b.GetRawCertData());
-                    }
-                }
-            }
-            else
-            {
-                var value = (IEnumerable<X509Certificate>) GetValueForDirectory(instance);
-                if (value != null)
-                {
-                    foreach (var b in value)
-                    {
-                        modification.Add(b.GetRawCertData());
-                    }
-                }
-            }
-#else
+
             var value = (IEnumerable<X509Certificate>)GetValueForDirectory(instance);
             if (value != null)
             {
@@ -64,7 +41,6 @@ namespace LinqToLdap.Mapping.PropertyMappings
                     modification.Add(b.GetRawCertData());
                 }
             }
-#endif
 
             return modification;
         }
@@ -81,14 +57,15 @@ namespace LinqToLdap.Mapping.PropertyMappings
             {
                 if (_isX5092)
                 {
+                    
                     var certs = value.GetValues(typeof(byte[]))
-                        .Select(c => new X509Certificate2((byte[])c));
+                        .Select(c => X509CertificateLoader.LoadCertificate((byte[])c));
                     return new System.Collections.ObjectModel.Collection<X509Certificate2>(certs.ToList());
                 }
                 else
                 {
                     var certs = value.GetValues(typeof(byte[]))
-                        .Select(c => new X509Certificate((byte[])c));
+                        .Select(c => (X509Certificate)X509CertificateLoader.LoadCertificate((byte[])c));
                     return new System.Collections.ObjectModel.Collection<X509Certificate>(certs.ToList());
                 }
             }

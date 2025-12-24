@@ -1,6 +1,7 @@
 ﻿using LinqToLdap.Exceptions;
 using System;
 using System.Collections.Generic;
+using System.DirectoryServices.Protocols;
 using System.Linq;
 using System.Reflection;
 
@@ -11,11 +12,7 @@ namespace LinqToLdap.Mapping
     /// </summary>
     public class DirectoryMapper : IDirectoryMapper
     {
-#if (NET35 || NET40)
-        private readonly LinqToLdap.Collections.SafeDictionary<Type, IObjectMapping> _mappings = new LinqToLdap.Collections.SafeDictionary<Type, IObjectMapping>();
-#else
         private readonly System.Collections.Concurrent.ConcurrentDictionary<Type, IObjectMapping> _mappings = new System.Collections.Concurrent.ConcurrentDictionary<Type, IObjectMapping>();
-#endif
         private Func<Type, IClassMap> _autoClassMapper;
         private Func<Type, IClassMap> _attributeClassMapper;
 
@@ -23,19 +20,12 @@ namespace LinqToLdap.Mapping
         /// Returns all mappings tracked by this object.
         /// </summary>
         /// <returns></returns>
-#if (NET35 || NET40)
-        public LinqToLdap.Collections.ReadOnlyDictionary<Type, IObjectMapping> GetMappings()
-        {
-            return _mappings.ToReadOnly();
-        }
-#else
 
         public System.Collections.ObjectModel.ReadOnlyDictionary<Type, IObjectMapping> GetMappings()
         {
             return new System.Collections.ObjectModel.ReadOnlyDictionary<Type, IObjectMapping>(_mappings);
         }
 
-#endif
 
         /// <summary>
         /// Provide a delegate that takes an object type and returns the class map for it.
@@ -152,6 +142,7 @@ namespace LinqToLdap.Mapping
         /// <param name="includeObjectCategory">
         /// Indicates if the object category should be included in all queries.
         /// </param>
+        /// <param name="includeSecurityMasks"></param>
         /// <param name="namingContext">The location of the objects in the directory.</param>
         /// <param name="objectClasses">The object classes for the object.</param>
         /// <param name="includeObjectClasses">Indicates if the object classes should be included in all queries.</param>
@@ -159,7 +150,7 @@ namespace LinqToLdap.Mapping
         /// Thrown if the mapping is invalid.
         /// </exception>
         /// <returns></returns>
-        public IObjectMapping Map(IClassMap classMap, string namingContext = null, IEnumerable<string> objectClasses = null, bool includeObjectClasses = true, string objectCategory = null, bool includeObjectCategory = true)
+        public IObjectMapping Map(IClassMap classMap, string namingContext = null, IEnumerable<string> objectClasses = null, bool includeObjectClasses = true, string objectCategory = null, bool includeObjectCategory = true, SecurityMasks includeSecurityMasks = SecurityMasks.None)
         {
             if (classMap == null) throw new ArgumentNullException(nameof(classMap));
 
@@ -167,7 +158,7 @@ namespace LinqToLdap.Mapping
             {
                 var mapped = classMap.PerformMapping(namingContext, objectCategory,
                                         includeObjectCategory,
-                                        objectClasses, includeObjectClasses);
+                                        objectClasses, includeObjectClasses, includeSecurityMasks);
 
                 mapped.Validate();
 
@@ -186,11 +177,12 @@ namespace LinqToLdap.Mapping
         /// <param name="objectClasses">The optional object classes.  Used for <see cref="AutoClassMap{T}"/></param>
         /// <param name="objectClass">The optional object class.  Used for <see cref="AutoClassMap{T}"/></param>
         /// <param name="objectCategory">The optional object category.  Used for <see cref="AutoClassMap{T}"/></param>
+        /// <param name="includeSecurityMasks"></param>
         /// <exception cref="MappingException">
         /// Thrown if the mapping is invalid.
         /// </exception>
         /// <returns></returns>
-        public IObjectMapping Map<T>(string namingContext = null, string objectClass = null, IEnumerable<string> objectClasses = null, string objectCategory = null) where T : class
+        public IObjectMapping Map<T>(string namingContext = null, string objectClass = null, IEnumerable<string> objectClasses = null, string objectCategory = null, SecurityMasks includeSecurityMasks = SecurityMasks.None) where T : class
         {
             return _mappings.GetOrAdd(typeof(T), t =>
             {
@@ -217,7 +209,9 @@ namespace LinqToLdap.Mapping
 
                 var mapped = classMap.PerformMapping(namingContext,
                                                      objectCategory: objectCategory,
-                                                     objectClasses: objectClasses);
+                                                     objectClasses: objectClasses, 
+                                                     includeSecurityMasks: includeSecurityMasks
+                                                     );
 
                 mapped.Validate();
 
@@ -271,12 +265,8 @@ namespace LinqToLdap.Mapping
 
         private void MapSubTypes(IObjectMapping mapping)
         {
-#if (NET35 || NET40)
-            var mappings = _mappings.ToReadOnly();
-            foreach (var objectMapping in mappings)
-#else
+
             foreach (var objectMapping in _mappings)
-#endif
             {
                 //check if already mapped instance is in new mappings inheritance chain
                 var alreadyMappedBaseType = objectMapping.Key;

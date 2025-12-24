@@ -282,7 +282,7 @@ namespace LinqToLdap.Collections
                                    : valueArray[0];
                     value = rawValue == null
                         ? default
-                        : new X509Certificate2((byte[])rawValue);
+                        : X509CertificateLoader.LoadCertificate((byte[])rawValue);
                 }
                 catch (Exception ex)
                 {
@@ -539,16 +539,12 @@ namespace LinqToLdap.Collections
                     value = new X509Certificate2[valueArray.Length];
                     for (int i = 0; i < valueArray.Length; i++)
                     {
-                        value[i] = new X509Certificate2((byte[])valueArray[i]);
+                        value[i] = X509CertificateLoader.LoadCertificate((byte[])valueArray[i]);
                     }
                 }
                 catch (Exception ex)
                 {
-#if NET35
-                    ThrowFormatException(ex, attribute, value == null ? "" : string.Join(",", new[] { rawValue.ToString() }), type);
-#else
                     ThrowFormatException(ex, attribute, value == null ? "" : string.Join(",", rawValue), type);
-#endif
                 }
             }
 
@@ -562,12 +558,7 @@ namespace LinqToLdap.Collections
         /// <returns></returns>
         public IEnumerable<X509Certificate> GetX509Certificates(string attribute)
         {
-#if NET35
-            var certs = GetX509Certificate2s(attribute);
-            return certs != null ? certs.Cast<X509Certificate>() : null;
-#else
             return GetX509Certificate2s(attribute);
-#endif
         }
 
         /// <summary>
@@ -588,11 +579,7 @@ namespace LinqToLdap.Collections
             }
             catch (Exception ex)
             {
-#if NET35
-                ThrowFormatException(ex, attribute, value == null ? "" : string.Join(",", value.Select(b => b.ToString(System.Globalization.CultureInfo.InvariantCulture)).ToArray()), typeof(Guid));
-#else
                 ThrowFormatException(ex, attribute, value == null ? "" : string.Join(",", value), typeof(Guid));
-#endif
             }
 
             return null;
@@ -616,11 +603,7 @@ namespace LinqToLdap.Collections
             }
             catch (Exception ex)
             {
-#if NET35
-                ThrowFormatException(ex, attribute, value == null ? "" : string.Join(",", value.Select(b => b.ToString(System.Globalization.CultureInfo.InvariantCulture)).ToArray()), typeof(SecurityIdentifier));
-#else
                 ThrowFormatException(ex, attribute, value == null ? "" : string.Join(",", value), typeof(SecurityIdentifier));
-#endif
             }
 
             return null;
@@ -644,11 +627,7 @@ namespace LinqToLdap.Collections
             }
             catch (Exception ex)
             {
-#if NET35
-                ThrowFormatException(ex, attribute, value == null ? "" : string.Join(",", value.Select(b => b.ToString()).ToArray()), typeof(IEnumerable<SecurityIdentifier>));
-#else
                 ThrowFormatException(ex, attribute, value == null ? "" : string.Join(",", value), typeof(IEnumerable<SecurityIdentifier>));
-#endif
             }
 
             return null;

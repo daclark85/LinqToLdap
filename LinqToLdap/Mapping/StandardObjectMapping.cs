@@ -1,6 +1,7 @@
 ﻿using LinqToLdap.Helpers;
 using System;
 using System.Collections.Generic;
+using System.DirectoryServices.Protocols;
 using System.Linq;
 
 namespace LinqToLdap.Mapping
@@ -9,18 +10,13 @@ namespace LinqToLdap.Mapping
     {
         private readonly Ctor<T> _constructor;
 
-#if NET35
-        private readonly LinqToLdap.Collections.SafeDictionary<string, IObjectMapping> _fullObjectClassMappings = new LinqToLdap.Collections.SafeDictionary<string, IObjectMapping>();
-#else
-
         private readonly System.Collections.Concurrent.ConcurrentDictionary<string, IObjectMapping> _fullObjectClassMappings =
             new System.Collections.Concurrent.ConcurrentDictionary<string, IObjectMapping>(StringComparer.OrdinalIgnoreCase);
 
-#endif
 
         public StandardObjectMapping(string namingContext,
-            IEnumerable<IPropertyMapping> propertyMappings, string objectCategory, bool includeObjectCategory, IEnumerable<string> objectClass, bool includeObjectClasses)
-            : base(namingContext, propertyMappings, objectCategory, includeObjectCategory, objectClass, includeObjectClasses)
+            IEnumerable<IPropertyMapping> propertyMappings, string objectCategory, bool includeObjectCategory, IEnumerable<string> objectClass, bool includeObjectClasses, SecurityMasks includeSecurityMasks = SecurityMasks.None)
+            : base(namingContext, propertyMappings, objectCategory, includeObjectCategory, objectClass, includeObjectClasses, includeSecurityMasks)
         {
             _constructor = DelegateBuilder.BuildCtor<T>();
         }
@@ -32,11 +28,7 @@ namespace LinqToLdap.Mapping
         {
             if (HasSubTypeMappings && objectClasses != null)
             {
-#if NET35
-                string joinedObjectClasses = string.Join(" ", objectClasses.Cast<string>().ToArray());
-#else
                 string joinedObjectClasses = string.Join(" ", objectClasses);
-#endif
 
                 if (_fullObjectClassMappings.TryGetValue(joinedObjectClasses, out IObjectMapping mapping))
                 {

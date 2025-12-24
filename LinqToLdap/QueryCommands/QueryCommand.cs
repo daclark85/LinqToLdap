@@ -57,11 +57,7 @@ namespace LinqToLdap.QueryCommands
 
         public abstract object Execute(DirectoryConnection connection, SearchScope scope, int maxPageSize, bool pagingEnabled, ILinqToLdapLogger log = null, string namingContext = null);
 
-#if !NET35 && !NET40
-
         public abstract System.Threading.Tasks.Task<object> ExecuteAsync(LdapConnection connection, SearchScope scope, int maxPageSize, bool pagingEnabled, ILinqToLdapLogger log = null, string namingContext = null);
-
-#endif
 
         protected void SetDistinguishedName(string namingContext)
         {

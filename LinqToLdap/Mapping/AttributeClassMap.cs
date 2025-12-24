@@ -1,6 +1,7 @@
 ﻿using LinqToLdap.Collections;
 using LinqToLdap.Exceptions;
 using System.Collections.Generic;
+using System.DirectoryServices.Protocols;
 using System.Linq;
 using System.Reflection;
 
@@ -16,7 +17,7 @@ namespace LinqToLdap.Mapping
         /// Maps class information for <typeparamref name="T"/>.
         /// </summary>
         /// <exception cref="MappingException">Thrown if <typeparamref name="T"/> does not have a <see cref="DirectorySchemaAttribute"/>.</exception>
-        public override IClassMap PerformMapping(string namingContext = null, string objectCategory = null, bool includeObjectCategory = true, IEnumerable<string> objectClasses = null, bool includeObjectClasses = true)
+        public override IClassMap PerformMapping(string namingContext = null, string objectCategory = null, bool includeObjectCategory = true, IEnumerable<string> objectClasses = null, bool includeObjectClasses = true, SecurityMasks includeSecurityMasks = System.DirectoryServices.Protocols.SecurityMasks.None)
         {
             var type = typeof(T);
             var schemaAttribute = type
@@ -49,6 +50,11 @@ namespace LinqToLdap.Mapping
             {
                 ObjectClasses(schemaAttribute.ObjectClasses, schemaAttribute.IncludeObjectClasses);
             }
+            if (includeSecurityMasks != System.DirectoryServices.Protocols.SecurityMasks.None)
+            {
+                SecurityMasks(includeSecurityMasks);
+            }
+            
 
             var allProperties = type.GetProperties(Flags)
                 .Where(p => p.GetGetMethod(true) != null && p.GetSetMethod(true) != null)
@@ -84,13 +90,8 @@ namespace LinqToLdap.Mapping
 
             var distinguishedName = allProperties
                 .Where(p => p.GetCustomAttributes(typeof(DistinguishedNameAttribute), true).Any())
-#if NET35
-                .Select(p => new LinqToLdap.Helpers.TwoTuple<PropertyInfo, DistinguishedNameAttribute>(p,
-#else
-                .Select(p => new System.Tuple<PropertyInfo, DistinguishedNameAttribute>(p,
-#endif
 
-                    p.GetCustomAttributes(typeof(DistinguishedNameAttribute), true).Cast<DistinguishedNameAttribute>().First()))
+                .Select(p => new System.Tuple<PropertyInfo, DistinguishedNameAttribute>(p, p.GetCustomAttributes(typeof(DistinguishedNameAttribute), true).Cast<DistinguishedNameAttribute>().First()))
                 .FirstOrDefault();
 
             if (distinguishedName != null)

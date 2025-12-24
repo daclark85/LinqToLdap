@@ -1,6 +1,7 @@
 ﻿using LinqToLdap.Exceptions;
 using System;
 using System.Collections.Generic;
+using System.DirectoryServices.Protocols;
 
 namespace LinqToLdap.Mapping
 {
@@ -24,8 +25,9 @@ namespace LinqToLdap.Mapping
         /// <param name="namingContext">The location of the objects in the directory.</param>
         /// <param name="objectClasses">The object classes for the object.</param>
         /// <param name="includeObjectClasses">Indicates if the object classes should be included in all queries.</param>
+        /// <param name="includeSecurityMasks"></param>
         /// <returns></returns>
-        IClassMap PerformMapping(string namingContext = null, string objectCategory = null, bool includeObjectCategory = true, IEnumerable<string> objectClasses = null, bool includeObjectClasses = true);
+        IClassMap PerformMapping(string namingContext = null, string objectCategory = null, bool includeObjectCategory = true, IEnumerable<string> objectClasses = null, bool includeObjectClasses = true, SecurityMasks includeSecurityMasks = default);
 
         /// <summary>
         /// Validates the mapping.  Should throw a <see cref="MappingException"/> if the mapping is not valid.

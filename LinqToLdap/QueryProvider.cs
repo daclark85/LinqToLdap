@@ -28,8 +28,6 @@ namespace LinqToLdap
             return (TResult)Execute(expression);
         }
 
-#if (!NET35 && !NET40)
-
         async System.Threading.Tasks.Task<object> IAsyncQueryProvider.ExecuteAsync(Expression expression)
         {
             return await ExecuteAsync(expression).ConfigureAwait(false);
@@ -41,8 +39,6 @@ namespace LinqToLdap
         }
 
         public abstract System.Threading.Tasks.Task<object> ExecuteAsync(Expression expression);
-
-#endif
 
         public abstract string GetQueryText(Expression expression);
 

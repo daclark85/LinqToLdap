@@ -35,11 +35,8 @@ namespace LinqToLdap
         /// <returns></returns>
         public static string ToStringOctet(this byte[] bytes)
         {
-#if NET35
-            return @"\" + string.Join(@"\", bytes.Select(b => b.ToString("x2")).ToArray());
-#else
+
             return @"\" + string.Join(@"\", bytes.Select(b => b.ToString("x2")));
-#endif
         }
 
         #region DateTime Extensions
@@ -71,7 +68,6 @@ namespace LinqToLdap
 
         #endregion DateTime Extensions
 
-#if (!NET35 && !NET40)
 
         /// <summary>
         /// Converts a dictionary to a <see cref="System.Collections.ObjectModel.ReadOnlyDictionary{K,V}"/>
@@ -85,32 +81,6 @@ namespace LinqToLdap
             return new System.Collections.ObjectModel.ReadOnlyDictionary<TKey, TValue>(dictionary);
         }
 
-#else
-        /// <summary>
-        /// Converts a dictionary to a <see cref="LinqToLdap.Collections.ReadOnlyDictionary{K,V}"/>
-        /// </summary>
-        /// <typeparam name="TKey">Key type</typeparam>
-        /// <typeparam name="TValue">Value type</typeparam>
-        /// <param name="dictionary">The original dictionary</param>
-        /// <returns></returns>
-        public static LinqToLdap.Collections.ReadOnlyDictionary<TKey, TValue> ToReadOnlyDictionary<TKey, TValue>(this IDictionary<TKey, TValue> dictionary)
-        {
-            return new LinqToLdap.Collections.ReadOnlyDictionary<TKey, TValue>(dictionary);
-        }
-
-        /// <summary>
-        /// Converts a dictionary to a <see cref="LinqToLdap.Collections.ReadOnlyDictionary{K,V}"/>
-        /// </summary>
-        /// <typeparam name="TKey">Key type</typeparam>
-        /// <typeparam name="TValue">Value type</typeparam>
-        /// <param name="dictionary">The original dictionary</param>
-        /// <returns></returns>
-        public static LinqToLdap.Collections.ReadOnlyDictionary<TKey, TValue> ToReadOnlyDictionary<TKey, TValue>(this Dictionary<TKey, TValue> dictionary)
-        {
-            return new LinqToLdap.Collections.ReadOnlyDictionary<TKey, TValue>(dictionary);
-        }
-
-#endif
 
         /// <summary>
         /// Indicates if the <paramref name="type"/> is for an anonymous type.
@@ -134,11 +104,7 @@ namespace LinqToLdap
 
         internal static bool IsNullOrEmpty(this string str)
         {
-#if NET35
-            return string.IsNullOrEmpty(str) || string.IsNullOrEmpty(str.Trim());
-#else
             return string.IsNullOrWhiteSpace(str);
-#endif
         }
 
         internal static void AssertSuccess(this DirectoryResponse response)

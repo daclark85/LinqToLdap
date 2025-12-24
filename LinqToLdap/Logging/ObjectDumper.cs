@@ -130,11 +130,8 @@ namespace LinqToLdap.Logging
                                     value.MatchedDN,
                                     value.ResultCode,
                                     value.RequestId,
-#if NET35
-                                    string.Join(" | ", value.Controls.Select(c => c.Type).ToArray()), string.Join(" | ", value.Referral.Select(u => u.ToString()).ToArray())));
-#else
+
                                     string.Join(" | ", value.Controls.Select(c => c.Type)), string.Join(" | ", value.Referral.Select(u => u.ToString()))));
-#endif
                             }
                         }
                         else

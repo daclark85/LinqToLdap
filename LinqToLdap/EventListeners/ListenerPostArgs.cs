@@ -14,23 +14,16 @@ namespace LinqToLdap.EventListeners
         where TResponse : DirectoryResponse
         where TObject : class
     {
-#if (NET35 || NET40)
-        private readonly WeakReference _connection;
-        private readonly WeakReference _entry;
-#else
+
         private readonly WeakReference<LdapConnection> _connection;
         private readonly WeakReference<TObject> _entry;
-#endif
 
         internal ListenerPostArgs(TObject entry, TRequest request, TResponse response, LdapConnection connection)
         {
-#if (NET35 || NET40)
-            _entry = new WeakReference(entry);
-            _connection = new WeakReference(connection);
-#else
+
             _entry = new WeakReference<TObject>(entry);
             _connection = new WeakReference<LdapConnection>(connection);
-#endif
+
             Request = request;
             Response = response;
         }
@@ -42,13 +35,8 @@ namespace LinqToLdap.EventListeners
         {
             get
             {
-
-#if (NET35 || NET40)
-                return _entry.Target as TObject;
-#else
                 TObject target;
                 return _entry.TryGetTarget(out target) ? target : default;
-#endif
             }
         }
 
@@ -69,12 +57,8 @@ namespace LinqToLdap.EventListeners
         {
             get
             {
-#if (NET35 || NET40)
-                return _connection.Target as LdapConnection;
-#else
                 LdapConnection target;
                 return _connection.TryGetTarget(out target) ? target : null;
-#endif
             }
         }
     }

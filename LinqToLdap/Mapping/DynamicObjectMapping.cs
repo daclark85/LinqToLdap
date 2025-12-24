@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.DirectoryServices.Protocols;
 
 namespace LinqToLdap.Mapping
 {
@@ -38,13 +39,11 @@ namespace LinqToLdap.Mapping
         public bool HasCatchAllMapping => false;
         public bool IncludeObjectClasses => true;
 
-#if (!NET35 && !NET40)
+        public SecurityMasks IncludeSecurityMasks => SecurityMasks.None;
+
         private System.Collections.ObjectModel.ReadOnlyDictionary<string, string> _properties;
         public System.Collections.ObjectModel.ReadOnlyDictionary<string, string> Properties => _properties ?? (_properties = new System.Collections.ObjectModel.ReadOnlyDictionary<string, string>(new Dictionary<string, string>()));
-#else
-        private Collections.ReadOnlyDictionary<string, string> _properties;
-        public Collections.ReadOnlyDictionary<string, string> Properties => _properties ?? (_properties = new Collections.ReadOnlyDictionary<string, string>(new Dictionary<string, string>()));
-#endif
+
 
         public IEnumerable<IPropertyMapping> GetPropertyMappings()
         {

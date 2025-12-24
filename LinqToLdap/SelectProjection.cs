@@ -12,11 +12,7 @@ namespace LinqToLdap
 
             Projection = projection.Compile();
 
-#if NET35
-            ReturnType = projection.Body.Type;
-#else
             ReturnType = projection.ReturnType;
-#endif
         }
 
         public IDictionary<string, string> SelectedProperties { get; private set; }

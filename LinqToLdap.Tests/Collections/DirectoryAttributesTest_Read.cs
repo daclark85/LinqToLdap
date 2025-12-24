@@ -413,7 +413,7 @@ namespace LinqToLdap.Tests.Collections
         [TestMethod]
         public void GetX509Certificate_ExistsAndCorrectType_ReturnsX509Certificate()
         {
-            _attributes.GetX509Certificate("property11").Should().Be.EqualTo(new X509Certificate(Resources.cert));
+            _attributes.GetX509Certificate("property11").Should().Be.EqualTo(X509CertificateLoader.LoadCertificate(Resources.cert));
         }
 
         [TestMethod]
@@ -425,7 +425,7 @@ namespace LinqToLdap.Tests.Collections
         [TestMethod]
         public void GetX509Certificate2_ExistsAndCorrectType_ReturnsX509Certificate2()
         {
-            _attributes.GetX509Certificate2("property11").Should().Be.EqualTo(new X509Certificate2(Resources.cert));
+            _attributes.GetX509Certificate2("property11").Should().Be.EqualTo(X509CertificateLoader.LoadCertificate(Resources.cert));
         }
 
         [TestMethod]
@@ -437,7 +437,7 @@ namespace LinqToLdap.Tests.Collections
         [TestMethod]
         public void GetX509Certificates_ExistsAndCorrectType_ReturnsListOfX509Certificates()
         {
-            _attributes.GetX509Certificates("property11").Should().Have.SameSequenceAs(new[] { new X509Certificate(Resources.cert) });
+            _attributes.GetX509Certificates("property11").Should().Have.SameSequenceAs(new[] { X509CertificateLoader.LoadCertificate(Resources.cert) });
         }
 
         [TestMethod]
@@ -449,7 +449,7 @@ namespace LinqToLdap.Tests.Collections
         [TestMethod]
         public void GetX509Certificate2s_ExistsAndCorrectType_ReturnsListOfX509Certificates()
         {
-            _attributes.GetX509Certificate2s("property11").Should().Have.SameSequenceAs(new[] { new X509Certificate2(Resources.cert) });
+            _attributes.GetX509Certificate2s("property11").Should().Have.SameSequenceAs(new[] { X509CertificateLoader.LoadCertificate(Resources.cert) });
         }
 
         [TestMethod]

@@ -3,6 +3,7 @@ using LinqToLdap.Exceptions;
 using LinqToLdap.Mapping.PropertyMappingBuilders;
 using System;
 using System.Collections.Generic;
+using System.DirectoryServices.Protocols;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -69,8 +70,9 @@ namespace LinqToLdap.Mapping
         /// <param name="namingContext">The location of the objects in the directory.</param>
         /// <param name="objectClasses">The object classes for the object.</param>
         /// <param name="includeObjectClasses">Indicates if the object classes should be included in all queries.</param>
+        /// <param name="includeSecurityMasks"></param>
         /// <returns></returns>
-        public abstract IClassMap PerformMapping(string namingContext = null, string objectCategory = null, bool includeObjectCategory = true, IEnumerable<string> objectClasses = null, bool includeObjectClasses = true);
+        public abstract IClassMap PerformMapping(string namingContext = null, string objectCategory = null, bool includeObjectCategory = true, IEnumerable<string> objectClasses = null, bool includeObjectClasses = true, SecurityMasks includeSecurityMasks = System.DirectoryServices.Protocols.SecurityMasks.None);
 
         /// <summary>
         /// Validates the mapping
@@ -104,6 +106,11 @@ namespace LinqToLdap.Mapping
         protected bool IncludeObjectClasses { get; private set; }
 
         /// <summary>
+        /// Gets the control flags associated with the security descriptor.
+        /// </summary>
+        protected SecurityMasks IncludeSecurityMasks { get; private set; }
+
+        /// <summary>
         /// Indicates if this class should flatten its hierarchy when mapping. Flattened mappings will include inherited properties, but will not work with queries for subtypes or base types.
         /// </summary>
         public bool WithoutSubTypeMapping { get; set; }
@@ -134,7 +141,7 @@ namespace LinqToLdap.Mapping
         {
             return new StandardObjectMapping<T>(GetNamingContext(),
                                                 PropertyMappings.Select(pmb => pmb.ToPropertyMapping()),
-                                                GetObjectCategory(), IncludeObjectCategory, GetObjectClass(), IncludeObjectClasses)
+                                                GetObjectCategory(), IncludeObjectCategory, GetObjectClass(), IncludeObjectClasses, IncludeSecurityMasks)
             {
                 WithoutSubTypeMapping = WithoutSubTypeMapping
             };
@@ -185,6 +192,18 @@ namespace LinqToLdap.Mapping
                 _objectClass = new List<string>(1) { objectClass };
             }
             IncludeObjectClasses = !objectClass.IsNullOrEmpty() && includeObjectClass;
+        }
+
+        /// <summary>
+        /// Sets the security masks to be included when querying the directory entry.
+        /// </summary>
+        /// <param name="includeSecurityMasks">The security masks to include.</param>
+        protected void SecurityMasks(SecurityMasks includeSecurityMasks)
+        {
+            if (includeSecurityMasks != System.DirectoryServices.Protocols.SecurityMasks.None)
+            {
+                IncludeSecurityMasks = includeSecurityMasks;
+            }
         }
 
         /// <summary>

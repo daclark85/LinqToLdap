@@ -21,9 +21,7 @@ namespace LinqToLdap.Visitors
                 { typeof(Queryable), 0},
                 { typeof(QueryableExtensions), 0},
                 { typeof(PredicateBuilder), 0},
-#if (!NET35 && !NET40)
                 { typeof(Async.QueryableAsyncExtensions), 0},
-#endif
             };
 
         private StringBuilder _sb;
@@ -195,13 +193,8 @@ namespace LinqToLdap.Visitors
             {
                 if (_mapping.ObjectClasses != null)
                 {
-#if NET35
-                    return string.Join(string.Empty,
-                                _mapping.ObjectClasses.Select(oc => string.Format("(objectClass={0})", oc)).ToArray());
-#else
                     return string.Join(string.Empty,
                                 _mapping.ObjectClasses.Select(oc => $"(objectClass={oc})"));
-#endif
                 }
             }
 
@@ -232,6 +225,7 @@ namespace LinqToLdap.Visitors
                 VisitStringMethods(m);
             }
             else if (m.Method.DeclaringType == typeof(Enumerable) ||
+                     m.Method.DeclaringType?.FullName == "System.MemoryExtensions" ||
                      (m.Method.DeclaringType?.GetInterface("IEnumerable`1") != null))
             {
                 VisitEnumerableMethods(m);
@@ -912,37 +906,85 @@ namespace LinqToLdap.Visitors
             {
                 if (m.Arguments.Count == 1)
                 {
-                    if (m.Object is MemberExpression)
+                    // Instance method: collection.Contains(value)
+                    if (m.Object is MemberExpression memberExpr)
                     {
-                        _sb.Append("(");
-                        if (_not) _sb.Append("!(");
-                        Visit(m.Object);
-                        _sb.Append("=");
-                        Visit(m.Arguments[0]);
-                        if (_not) _sb.Append(")");
-                        _sb.Append(")");
+                        // Check if this is a property access on the parameter (entity.ArrayProperty.Contains(value))
+                        if (memberExpr.Expression?.NodeType == ExpressionType.Parameter)
+                        {
+                            // This is: entity.ArrayProperty.Contains(value)
+                            // Build: (attributeName=value)
+                            _sb.Append("(");
+                            if (_not) _sb.Append("!(");
+                            Visit(m.Object);
+                            _sb.Append("=");
+                            Visit(m.Arguments[0]);
+                            if (_not) _sb.Append(")");
+                            _sb.Append(")");
+                            return;
+                        }
                     }
-                    else
+                    
+                    // Fall through to VisitArgumentsForContains for constant collections
+                    VisitArgumentsForContains(m);
+                }
+                else if (m.Arguments.Count == 2)
+                {
+                    // Extension method: Contains(source, value) or Enumerable.Contains(source, value)
+                    // This handles both Enumerable.Contains and MemoryExtensions.Contains
+                    var sourceArg = m.Arguments[0];
+                    
+                    // Unwrap any conversions (e.g., array to ReadOnlySpan)
+                    while (sourceArg.NodeType == ExpressionType.Convert || sourceArg.NodeType == ExpressionType.ConvertChecked)
                     {
-                        VisitArgumentsForContains(m);
+                        sourceArg = ((UnaryExpression)sourceArg).Operand;
                     }
+                    
+                    // Also unwrap implicit conversion operators (op_Implicit)
+                    while (sourceArg.NodeType == ExpressionType.Call)
+                    {
+                        var methodCall = (MethodCallExpression)sourceArg;
+                        if (methodCall.Method.Name == "op_Implicit" && methodCall.Arguments.Count == 1)
+                        {
+                            sourceArg = methodCall.Arguments[0];
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+                    
+                    // Check if the source is a member expression (property access)
+                    if (sourceArg is MemberExpression memberExpr)
+                    {
+                        // Walk up the expression tree to find if this is a parameter-based member access
+                        var currentExpr = memberExpr.Expression;
+                        while (currentExpr != null && currentExpr.NodeType == ExpressionType.MemberAccess)
+                        {
+                            currentExpr = ((MemberExpression)currentExpr).Expression;
+                        }
+                        
+                        if (currentExpr?.NodeType == ExpressionType.Parameter)
+                        {
+                            // This is: entity.ArrayProperty.Contains(value)
+                            // Build: (attributeName=value)
+                            _sb.Append("(");
+                            if (_not) _sb.Append("!(");
+                            Visit(sourceArg);  // Visit the unwrapped member expression
+                            _sb.Append("=");
+                            Visit(m.Arguments[1]);
+                            if (_not) _sb.Append(")");
+                            _sb.Append(")");
+                            return;
+                        }
+                    }
+                    
+                    // Fall through to VisitArgumentsForContains for constant collections
+                    VisitArgumentsForContains(m);
                 }
                 else
                 {
-                    if (m.Arguments[0] is MemberExpression)
-                    {
-                        _sb.Append("(");
-                        if (_not) _sb.Append("!(");
-                        Visit(m.Arguments[0]);
-                        _sb.Append("=");
-                        Visit(m.Arguments[1]);
-                        if (_not) _sb.Append(")");
-                        _sb.Append(")");
-                    }
-                    else
-                    {
-                        VisitArgumentsForContains(m);
-                    }
+                    throw new NotSupportedException($"Contains method with {m.Arguments.Count} arguments is not supported.");
                 }
             }
             else

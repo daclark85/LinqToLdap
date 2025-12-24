@@ -305,8 +305,6 @@ namespace LinqToLdap
         /// <returns></returns>
         DirectoryResponse SendRequest(DirectoryRequest request);
 
-#if !NET35 && !NET40
-
         /// <summary>
         /// Retrieves the mapped class from the directory using the distinguished name.  <see cref="SearchScope.Base"/> is used.
         /// </summary>
@@ -562,6 +560,5 @@ namespace LinqToLdap
         /// <returns></returns>
         System.Threading.Tasks.Task<IList<TValue>> RetrieveRangesAsync<TValue>(string distinguishedName, string attributeName, int start = 0, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing);
 
-#endif
     }
 }

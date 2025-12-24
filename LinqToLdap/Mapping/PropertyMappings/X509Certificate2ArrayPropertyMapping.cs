@@ -58,14 +58,14 @@ namespace LinqToLdap.Mapping.PropertyMappings
                 {
                     X509Certificate2[] certs = Array.ConvertAll(value.GetValues(typeof(byte[])),
                                                                 obj =>
-                                                                new X509Certificate2((byte[])obj));
+                                                                X509CertificateLoader.LoadCertificate((byte[])obj));
                     return certs;
                 }
                 else
                 {
                     X509Certificate[] certs = Array.ConvertAll(value.GetValues(typeof(byte[])),
                                                                 obj =>
-                                                                new X509Certificate((byte[])obj));
+                                                                (X509Certificate)X509CertificateLoader.LoadCertificate((byte[])obj));
                     return certs;
                 }
             }

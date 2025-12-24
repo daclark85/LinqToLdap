@@ -10,11 +10,7 @@ namespace LinqToLdap.Logging
     /// </summary>
     public class SimpleTextLogger : ILinqToLdapLogger
     {
-#if (NET35 || NET40)
-        private readonly WeakReference _textWriter;
-#else
         private readonly WeakReference<TextWriter> _textWriter;
-#endif
 
         /// <summary>
         /// Creates a new logger from a <see cref="TextWriter"/>.
@@ -22,11 +18,7 @@ namespace LinqToLdap.Logging
         /// <param name="textWriter">The log destination</param>
         public SimpleTextLogger(TextWriter textWriter)
         {
-#if (NET35 || NET40)
-            _textWriter = new WeakReference(textWriter);
-#else
             _textWriter = new WeakReference<TextWriter>(textWriter);
-#endif
             TraceEnabled = true;
         }
 
@@ -35,11 +27,7 @@ namespace LinqToLdap.Logging
         /// </summary>
         public SimpleTextLogger()
         {
-#if (NET35 || NET40)
-            _textWriter = new WeakReference(TraceTextWriter.Instance);
-#else
             _textWriter = new WeakReference<TextWriter>(TraceTextWriter.Instance);
-#endif
             TraceEnabled = true;
         }
 
@@ -56,19 +44,8 @@ namespace LinqToLdap.Logging
         {
             try
             {
-#if (NET35 || NET40)
-                try
-                {
-                    if (!_textWriter.IsAlive) return;
-                    ((TextWriter)_textWriter.Target).WriteLine(message);
-                }
-                catch (InvalidOperationException)
-                {
-                }
-#else
                 if (!_textWriter.TryGetTarget(out TextWriter target)) return;
                 target.WriteLine(message);
-#endif
             }
             catch (Exception ex)
             {
@@ -85,23 +62,10 @@ namespace LinqToLdap.Logging
         {
             try
             {
-#if (NET35 || NET40)
-                try
-                {
-                    if (!_textWriter.IsAlive) return;
-                    var writer = (TextWriter)_textWriter.Target;
-                    if (message != null) writer.WriteLine(message);
-                    ObjectDumper.Write(ex, 0, writer);
-                }
-                catch (InvalidOperationException)
-                {
-                }
-#else
                 if (!_textWriter.TryGetTarget(out TextWriter target)) return;
 
                 if (message != null) target.WriteLine(message);
                 ObjectDumper.Write(ex, 0, target);
-#endif
             }
             catch
             {

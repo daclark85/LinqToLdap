@@ -164,8 +164,27 @@ namespace LinqToLdap.Visitors
                     break;
 
                 case ExpressionType.Call:
-                    canBeReduced = true;
-                    return Expression.Constant(Expression.Lambda(e).Compile().DynamicInvoke(null), e.Type);
+                    var methodCall = e as MethodCallExpression;
+
+                    // Only try to reduce if the call has no dependencies on query parameters
+                    if (!ContainsParameterReference(methodCall))
+                    {
+                        try
+                        {
+                            canBeReduced = true;
+                            LambdaExpression lambda = Expression.Lambda(e);
+                            Delegate fn = lambda.Compile();
+                            return Expression.Constant(fn.DynamicInvoke(null), e.Type);
+                        }
+                        catch
+                        {
+                            // If compilation/invocation fails, can't reduce
+                            canBeReduced = false;
+                            return e;
+                        }
+                    }
+                    canBeReduced = false;
+                    return e;
 
                 case ExpressionType.MemberAccess:
                     var member = e as MemberExpression;
@@ -193,6 +212,38 @@ namespace LinqToLdap.Visitors
                 e = ((UnaryExpression)e).Operand;
             }
             return e;
+        }
+
+        private static bool ContainsParameterReference(Expression expression)
+        {
+            if (expression == null)
+                return false;
+
+            if (expression.NodeType == ExpressionType.Parameter)
+                return true;
+
+            switch (expression)
+            {
+                case BinaryExpression binary:
+                    return ContainsParameterReference(binary.Left) || ContainsParameterReference(binary.Right);
+
+                case UnaryExpression unary:
+                    return ContainsParameterReference(unary.Operand);
+
+                case MethodCallExpression methodCall:
+                    if (methodCall.Object != null && ContainsParameterReference(methodCall.Object))
+                        return true;
+                    return methodCall.Arguments.Any(ContainsParameterReference);
+
+                case MemberExpression member:
+                    return ContainsParameterReference(member.Expression);
+
+                case LambdaExpression lambda:
+                    return ContainsParameterReference(lambda.Body);
+
+                default:
+                    return false;
+            }
         }
     }
 }

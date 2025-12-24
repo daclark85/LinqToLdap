@@ -2,10 +2,12 @@
 using LinqToLdap.Exceptions;
 using LinqToLdap.Helpers;
 using LinqToLdap.Mapping.PropertyMappings;
+using LinqToLdap.Types;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Reflection;
+using System.Security.AccessControl;
 using System.Security.Cryptography.X509Certificates;
 using System.Security.Principal;
 
@@ -107,6 +109,14 @@ namespace LinqToLdap.Mapping
             else if (PropertyInfo.PropertyType == typeof(ICollection<SecurityIdentifier>) || PropertyInfo.PropertyType == typeof(Collection<SecurityIdentifier>))
             {
                 mapping = new SecurityIdentifierCollectionPropertyMapping<T>(arguments);
+            }
+            else if (PropertyInfo.PropertyType == typeof(RawSecurityDescriptor))
+            {
+                mapping = new RawSecurityDescriptorPropertyMapping<T>(arguments);
+            }
+            else if (PropertyInfo.PropertyType == typeof(PwdLastSetValue))
+            {
+                mapping = new PwdLastSetPropertyMapping<T>(arguments);
             }
             else if (PropertyInfo.PropertyType == typeof(X509Certificate2) || PropertyInfo.PropertyType == typeof(X509Certificate))
             {

@@ -1,6 +1,4 @@
-﻿#if (!NET35 && !NET40)
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.DirectoryServices.Protocols;
 using System.Linq;
@@ -374,5 +372,3 @@ namespace LinqToLdap.Async
         }
     }
 }
-
-#endif
