@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.DirectoryServices.Protocols;
 using System.IO;
 using System.Linq;
+using System.Threading;
 
 namespace LinqToLdap
 {
@@ -236,13 +237,14 @@ namespace LinqToLdap
         /// Specify specific attributes to load.  Some LDAP servers require an explicit request for certain attributes.
         /// </param>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <exception cref="ObjectDisposedException">Thrown if this instance has been disposed.</exception>
         /// <returns></returns>
         public async Task<IDirectoryAttributes> ListServerAttributesAsync(string[] attributes = null,
-            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing)
+            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default)
         {
             if (_disposed) throw new ObjectDisposedException(GetType().FullName);
-            return await LdapConnectionAsyncExtensions.ListServerAttributesAsync(_connection, attributes, Logger, resultProcessing).ConfigureAwait(false);
+            return await LdapConnectionAsyncExtensions.ListServerAttributesAsync(_connection, attributes, Logger, resultProcessing, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -251,13 +253,14 @@ namespace LinqToLdap
         /// <param name="distinguishedName">The distinguished name to look for.</param>
         /// <param name="attributes">The attributes to load.</param>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <exception cref="ObjectDisposedException">Thrown if this instance has been disposed.</exception>
         /// <returns></returns>
         public async Task<IDirectoryAttributes> GetByDNAsync(string distinguishedName, string[] attributes = null,
-            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing)
+            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default)
         {
             if (_disposed) throw new ObjectDisposedException(GetType().FullName);
-            return await LdapConnectionAsyncExtensions.GetByDNAsync(_connection, distinguishedName, Logger, attributes, resultProcessing).ConfigureAwait(false);
+            return await LdapConnectionAsyncExtensions.GetByDNAsync(_connection, distinguishedName, Logger, attributes, resultProcessing, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -265,14 +268,18 @@ namespace LinqToLdap
         /// </summary>
         /// <param name="distinguishedName">The distinguished name to look for.</param>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <typeparam name="T">The type of mapped object</typeparam>
         /// <exception cref="ObjectDisposedException">Thrown if this instance has been disposed.</exception>
         /// <returns></returns>
-        public async Task<T> GetByDNAsync<T>(string distinguishedName, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing) where T : class
+        public async Task<T> GetByDNAsync<T>(string distinguishedName, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default) where T : class
         {
             try
             {
                 if (_disposed) throw new ObjectDisposedException(GetType().FullName);
+
+                cancellationToken.ThrowIfCancellationRequested();
+
                 var mapping = _configuration.Mapper.Map<T>();
 
                 var request = new SearchRequest { DistinguishedName = distinguishedName, Scope = SearchScope.Base };
@@ -294,7 +301,7 @@ namespace LinqToLdap
 
                 SearchResponse response;
 
-                response = await Task.Run(() => _connection.SendRequest(request) as SearchResponse).ConfigureAwait(false);
+                response = await Task.Run(() => _connection.SendRequest(request) as SearchResponse, cancellationToken).ConfigureAwait(false);
                 response.AssertSuccess();
                 var entry = (response.Entries.Count == 0
                                 ? transformer.Default()
@@ -391,6 +398,7 @@ namespace LinqToLdap
         /// <param name="distinguishedName">The distinguished name for the entry. Ignored if <typeparamref name="T"/> is an instance of <see cref="IDirectoryAttributes"/></param>
         /// <param name="controls">Any <see cref="DirectoryControl"/>s to be sent with the request</param>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <returns></returns>
         /// <exception cref="ArgumentNullException">Thrown if entry is null</exception>
         /// <exception cref="ArgumentException">Thrown if distinguished name is null and there is no mapped distinguished name property.</exception>
@@ -403,17 +411,17 @@ namespace LinqToLdap
         /// <exception cref="LdapException">Thrown if the add was not successful.</exception>
         /// <exception cref="ObjectDisposedException">Thrown if this instance has been disposed.</exception>
         public async Task<T> AddAndGetAsync<T>(T entry, string distinguishedName = null, DirectoryControl[] controls = null,
-            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing) where T : class
+            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default) where T : class
         {
             if (entry is IDirectoryAttributes x)
             {
-                return (await AddAndGetEntryAsync(x, controls, resultProcessing).ConfigureAwait(false)) as T;
+                return (await AddAndGetEntryAsync(x, controls, resultProcessing, cancellationToken).ConfigureAwait(false)) as T;
             }
             else
             {
-                var dn = await AddEntryAsync(entry, distinguishedName, controls).ConfigureAwait(false);
+                var dn = await AddEntryAsync(entry, distinguishedName, controls, resultProcessing, cancellationToken).ConfigureAwait(false);
 
-                return await GetByDNAsync<T>(dn).ConfigureAwait(false);
+                return await GetByDNAsync<T>(dn, resultProcessing, cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -426,6 +434,7 @@ namespace LinqToLdap
         /// <param name="distinguishedName">The distinguished name for the entry. Ignored if <typeparamref name="T"/> is an instance of <see cref="IDirectoryAttributes"/></param>
         /// <param name="controls">Any <see cref="DirectoryControl"/>s to be sent with the request</param>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <returns></returns>
         /// <exception cref="ArgumentNullException">Thrown if entry is null</exception>
         /// <exception cref="ArgumentException">Thrown if distinguished name is null and there is no mapped distinguished name property.</exception>
@@ -438,10 +447,10 @@ namespace LinqToLdap
         /// <exception cref="LdapException">Thrown if the add was not successful.</exception>
         /// <exception cref="ObjectDisposedException">Thrown if this instance has been disposed.</exception>
         public async Task AddAsync<T>(T entry, string distinguishedName = null, DirectoryControl[] controls = null,
-            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing) where T : class
+            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default) where T : class
         {
-            if (entry is IDirectoryAttributes x) await AddEntryAsync(x, controls, resultProcessing).ConfigureAwait(false);
-            else await AddEntryAsync(entry, distinguishedName, controls, resultProcessing).ConfigureAwait(false);
+            if (entry is IDirectoryAttributes x) await AddEntryAsync(x, controls, resultProcessing, cancellationToken).ConfigureAwait(false);
+            else await AddEntryAsync(entry, distinguishedName, controls, resultProcessing, cancellationToken).ConfigureAwait(false);
         }
 
 
@@ -696,6 +705,7 @@ namespace LinqToLdap
         public IDirectoryAttributes UpdateAndGetEntry(IDirectoryAttributes entry, DirectoryControl[] controls = null)
         {
             if (_disposed) throw new ObjectDisposedException(GetType().FullName);
+
             return _connection.UpdateAndGet(entry, Logger, controls, _configuration.GetListeners<IUpdateEventListener>());
         }
 
@@ -934,6 +944,7 @@ namespace LinqToLdap
         /// <param name="entry">The attributes for the entry</param>
         /// <param name="controls">Any <see cref="DirectoryControl"/>s to be sent with the request</param>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <returns></returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="entry"/> is null.
         /// </exception>
@@ -941,11 +952,11 @@ namespace LinqToLdap
         /// <exception cref="LdapException">Thrown if the operation fails.</exception>
         /// <exception cref="ObjectDisposedException">Thrown if this instance has been disposed.</exception>
         public async Task AddEntryAsync(IDirectoryAttributes entry, DirectoryControl[] controls = null,
-            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing)
+            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default)
         {
             if (_disposed) throw new ObjectDisposedException(GetType().FullName);
 
-            await _connection.AddAsync(entry, Logger, controls, _configuration.GetListeners<IAddEventListener>(), resultProcessing).ConfigureAwait(false);
+            await _connection.AddAsync(entry, Logger, controls, _configuration.GetListeners<IAddEventListener>(), resultProcessing, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -954,6 +965,7 @@ namespace LinqToLdap
         /// <param name="entry">The attributes for the entry</param>
         /// <param name="controls">Any <see cref="DirectoryControl"/>s to be sent with the request</param>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <returns></returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="entry"/> is null.
         /// </exception>
@@ -961,11 +973,11 @@ namespace LinqToLdap
         /// <exception cref="LdapException">Thrown if the operation fails.</exception>
         /// <exception cref="ObjectDisposedException">Thrown if this instance has been disposed.</exception>
         public async Task<IDirectoryAttributes> AddAndGetEntryAsync(IDirectoryAttributes entry, DirectoryControl[] controls = null,
-            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing)
+            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default)
         {
             if (_disposed) throw new ObjectDisposedException(GetType().FullName);
 
-            return await _connection.AddAndGetAsync(entry, Logger, controls, _configuration.GetListeners<IAddEventListener>(), resultProcessing).ConfigureAwait(false);
+            return await _connection.AddAndGetAsync(entry, Logger, controls, _configuration.GetListeners<IAddEventListener>(), resultProcessing, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -974,16 +986,17 @@ namespace LinqToLdap
         /// <param name="distinguishedName">The distinguished name of the entry</param>
         /// <param name="controls">Any <see cref="DirectoryControl"/>s to be sent with the request</param>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="distinguishedName"/> is null, empty or white space.</exception>
         /// <exception cref="DirectoryOperationException">Thrown if the operation fails.</exception>
         /// <exception cref="LdapException">Thrown if the operation fails.</exception>
         /// <exception cref="ObjectDisposedException">Thrown if this instance has been disposed.</exception>
         public async Task DeleteAsync(string distinguishedName, DirectoryControl[] controls = null,
-            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing)
+            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default)
         {
             if (_disposed) throw new ObjectDisposedException(GetType().FullName);
 
-            await _connection.DeleteAsync(distinguishedName, Logger, controls, _configuration.GetListeners<IDeleteEventListener>(), resultProcessing).ConfigureAwait(false);
+            await _connection.DeleteAsync(distinguishedName, Logger, controls, _configuration.GetListeners<IDeleteEventListener>(), resultProcessing, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -994,6 +1007,7 @@ namespace LinqToLdap
         /// <param name="distinguishedName">The distinguished name for the entry. Ignored if <typeparamref name="T"/> is an instance of <see cref="IDirectoryAttributes"/></param>
         /// <param name="controls">Any <see cref="DirectoryControl"/>s to be sent with the request</param>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <typeparam name="T">The type of entry.</typeparam>
         /// <returns></returns>
         /// <exception cref="ArgumentNullException">Thrown if entry is null</exception>
@@ -1008,10 +1022,10 @@ namespace LinqToLdap
         /// <exception cref="LdapException">Thrown if the operation is not successful</exception>
         /// <exception cref="ObjectDisposedException">Thrown if this instance has been disposed.</exception>
         public async Task UpdateAsync<T>(T entry, string distinguishedName = null, DirectoryControl[] controls = null,
-            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing) where T : class
+            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default) where T : class
         {
-            if (entry is IDirectoryAttributes x) await UpdateEntryAsync(x, controls, resultProcessing).ConfigureAwait(false);
-            else await UpdateEntryAsync(entry, distinguishedName, controls, resultProcessing).ConfigureAwait(false);
+            if (entry is IDirectoryAttributes x) await UpdateEntryAsync(x, controls, resultProcessing, cancellationToken).ConfigureAwait(false);
+            else await UpdateEntryAsync(entry, distinguishedName, controls, resultProcessing, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -1022,6 +1036,7 @@ namespace LinqToLdap
         /// <param name="distinguishedName">The distinguished name for the entry. Ignored if <typeparamref name="T"/> is an instance of <see cref="IDirectoryAttributes"/></param>
         /// <param name="controls">Any <see cref="DirectoryControl"/>s to be sent with the request</param>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <typeparam name="T">The type of entry.</typeparam>
         /// <returns></returns>
         /// <exception cref="ArgumentNullException">Thrown if entry is null</exception>
@@ -1034,17 +1049,17 @@ namespace LinqToLdap
         /// <exception cref="LdapException">Thrown if the operation is not successful</exception>
         /// <exception cref="ObjectDisposedException">Thrown if this instance has been disposed.</exception>
         public async Task<T> UpdateAndGetAsync<T>(T entry, string distinguishedName = null, DirectoryControl[] controls = null,
-            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing) where T : class
+            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default) where T : class
         {
             if (entry is IDirectoryAttributes x)
             {
-                return (await UpdateAndGetEntryAsync(x, controls, resultProcessing).ConfigureAwait(false)) as T;
+                return (await UpdateAndGetEntryAsync(x, controls, resultProcessing, cancellationToken).ConfigureAwait(false)) as T;
             }
             else
             {
-                var dn = await UpdateEntryAsync(entry, distinguishedName, controls, resultProcessing).ConfigureAwait(false);
+                var dn = await UpdateEntryAsync(entry, distinguishedName, controls, resultProcessing, cancellationToken).ConfigureAwait(false);
 
-                return await GetByDNAsync<T>(dn, resultProcessing).ConfigureAwait(false);
+                return await GetByDNAsync<T>(dn, resultProcessing, cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -1054,6 +1069,7 @@ namespace LinqToLdap
         /// <param name="entry">The entry to update.</param>
         /// <param name="controls">Any <see cref="DirectoryControl"/>s to be sent with the request</param>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <returns></returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="entry"/> is null.
         /// </exception>
@@ -1061,10 +1077,10 @@ namespace LinqToLdap
         /// <exception cref="LdapException">Thrown if the operation fails</exception>
         /// <exception cref="ObjectDisposedException">Thrown if this instance has been disposed.</exception>
         public async Task<IDirectoryAttributes> UpdateAndGetEntryAsync(IDirectoryAttributes entry, DirectoryControl[] controls = null,
-            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing)
+            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default)
         {
             if (_disposed) throw new ObjectDisposedException(GetType().FullName);
-            return await _connection.UpdateAndGetAsync(entry, Logger, controls, _configuration.GetListeners<IUpdateEventListener>(), resultProcessing).ConfigureAwait(false);
+            return await _connection.UpdateAndGetAsync(entry, Logger, controls, _configuration.GetListeners<IUpdateEventListener>(), resultProcessing, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -1073,6 +1089,7 @@ namespace LinqToLdap
         /// <param name="entry">The entry to update.</param>
         /// <param name="controls">Any <see cref="DirectoryControl"/>s to be sent with the request</param>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <returns></returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="entry"/> is null.
         /// </exception>
@@ -1080,11 +1097,11 @@ namespace LinqToLdap
         /// <exception cref="LdapException">Thrown if the operation fails</exception>
         /// <exception cref="ObjectDisposedException">Thrown if this instance has been disposed.</exception>
         public async Task UpdateEntryAsync(IDirectoryAttributes entry, DirectoryControl[] controls = null,
-            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing)
+            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default)
         {
             if (_disposed) throw new ObjectDisposedException(GetType().FullName);
 
-            await _connection.UpdateAsync(entry, Logger, controls, _configuration.GetListeners<IUpdateEventListener>(), resultProcessing).ConfigureAwait(false);
+            await _connection.UpdateAsync(entry, Logger, controls, _configuration.GetListeners<IUpdateEventListener>(), resultProcessing, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -1095,11 +1112,12 @@ namespace LinqToLdap
         /// <param name="value">The value for the entry.</param>
         /// <param name="controls">Any <see cref="DirectoryControl"/>s to be sent with the request</param>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <exception cref="DirectoryOperationException">Thrown if the operation fails.</exception>
         /// <exception cref="LdapConnection">Thrown if the operation fails.</exception>
         /// <exception cref="ObjectDisposedException">Thrown if this instance has been disposed.</exception>
         public async Task AddAttributeAsync(string distinguishedName, string attributeName, object value = null, DirectoryControl[] controls = null,
-            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing)
+            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default)
         {
             if (_disposed) throw new ObjectDisposedException(GetType().FullName);
             if (distinguishedName.IsNullOrEmpty())
@@ -1109,7 +1127,7 @@ namespace LinqToLdap
 
             attributes.AddModification(value.ToDirectoryModification(attributeName, DirectoryAttributeOperation.Add));
 
-            await _connection.UpdateAsync(attributes, Logger, controls, _configuration.GetListeners<IUpdateEventListener>(), resultProcessing).ConfigureAwait(false);
+            await _connection.UpdateAsync(attributes, Logger, controls, _configuration.GetListeners<IUpdateEventListener>(), resultProcessing, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -1120,12 +1138,13 @@ namespace LinqToLdap
         /// <param name="value">The optional value. If null the whole attribute will be removed, otherwise the value will be removed.</param>
         /// <param name="controls">Any <see cref="DirectoryControl"/>s to be sent with the request</param>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="distinguishedName"/> is null, empty or white space.</exception>
         /// <exception cref="DirectoryOperationException">Thrown if the operation fails.</exception>
         /// <exception cref="LdapConnection">Thrown if the operation fails.</exception>
         /// <exception cref="ObjectDisposedException">Thrown if this instance has been disposed.</exception>
         public async Task DeleteAttributeAsync(string distinguishedName, string attributeName, object value = null, DirectoryControl[] controls = null,
-            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing)
+            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default)
         {
             if (_disposed) throw new ObjectDisposedException(GetType().FullName);
             if (distinguishedName.IsNullOrEmpty())
@@ -1135,7 +1154,7 @@ namespace LinqToLdap
 
             attributes.AddModification(value.ToDirectoryModification(attributeName, DirectoryAttributeOperation.Delete));
 
-            await _connection.UpdateAsync(attributes, Logger, controls, _configuration.GetListeners<IUpdateEventListener>(), resultProcessing).ConfigureAwait(false);
+            await _connection.UpdateAsync(attributes, Logger, controls, _configuration.GetListeners<IUpdateEventListener>(), resultProcessing, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -1146,6 +1165,7 @@ namespace LinqToLdap
         /// <param name="deleteOldRDN">Maps to <see cref="P:System.DirectoryServices.Protocols.ModifyDNRequest.DeleteOldRdn"/>. Defaults to null to use default behavior from <see cref="P:System.DirectoryServices.Protocols.ModifyDNRequest.DeleteOldRdn"/>.</param>
         /// <param name="controls">Any <see cref="DirectoryControl"/>s to be sent with the request</param>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <exception cref="ArgumentException">
         /// Thrown if <paramref name="currentDistinguishedName"/> has an invalid format.
         /// </exception>
@@ -1156,10 +1176,10 @@ namespace LinqToLdap
         /// <exception cref="LdapConnection">Thrown if the operation fails.</exception>
         /// <exception cref="ObjectDisposedException">Thrown if this instance has been disposed.</exception>
         public async Task<string> MoveEntryAsync(string currentDistinguishedName, string newNamingContext, bool? deleteOldRDN = null,
-            DirectoryControl[] controls = null, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing)
+            DirectoryControl[] controls = null, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default)
         {
             if (_disposed) throw new ObjectDisposedException(GetType().FullName);
-            return await _connection.MoveEntryAsync(currentDistinguishedName, newNamingContext, Logger, deleteOldRDN, controls, resultProcessing).ConfigureAwait(false);
+            return await _connection.MoveEntryAsync(currentDistinguishedName, newNamingContext, Logger, deleteOldRDN, controls, resultProcessing, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -1171,6 +1191,7 @@ namespace LinqToLdap
         /// <param name="deleteOldRDN">Maps to <see cref="P:System.DirectoryServices.Protocols.ModifyDNRequest.DeleteOldRdn"/>. Defaults to null to use default behavior from <see cref="P:System.DirectoryServices.Protocols.ModifyDNRequest.DeleteOldRdn"/>.</param>
         /// <param name="controls">Any <see cref="DirectoryControl"/>s to be sent with the request</param>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <exception cref="ArgumentException">
         /// Thrown if <paramref name="currentDistinguishedName"/> has an invalid format.
         /// </exception>
@@ -1181,10 +1202,10 @@ namespace LinqToLdap
         /// <exception cref="LdapConnection">Thrown if the operation fails.</exception>
         /// <exception cref="ObjectDisposedException">Thrown if this instance has been disposed.</exception>
         public async Task<string> RenameEntryAsync(string currentDistinguishedName, string newName, bool? deleteOldRDN = null, DirectoryControl[] controls = null,
-            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing)
+            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default)
         {
             if (_disposed) throw new ObjectDisposedException(GetType().FullName);
-            return await _connection.RenameEntryAsync(currentDistinguishedName, newName, Logger, deleteOldRDN, controls, resultProcessing).ConfigureAwait(false);
+            return await _connection.RenameEntryAsync(currentDistinguishedName, newName, Logger, deleteOldRDN, controls, resultProcessing, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -1195,17 +1216,18 @@ namespace LinqToLdap
         /// <param name="attributeName">The attribute to load.</param>
         /// <param name="start">The starting point for the range. Defaults to 0.</param>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <exception cref="ArgumentNullException">
         /// Thrown if <paramref name="distinguishedName"/> or <paramref name="attributeName"/> is null, empty or white space.
         /// </exception>
         /// <exception cref="ObjectDisposedException">Thrown if this instance has been disposed.</exception>
         /// <returns></returns>
         public async Task<IList<TValue>> RetrieveRangesAsync<TValue>(string distinguishedName, string attributeName, int start = 0,
-            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing)
+            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default)
         {
             if (_disposed) throw new ObjectDisposedException(GetType().FullName);
 
-            return await _connection.RetrieveRangesAsync<TValue>(distinguishedName, attributeName, start, Logger, resultProcessing).ConfigureAwait(false);
+            return await _connection.RetrieveRangesAsync<TValue>(distinguishedName, attributeName, start, Logger, resultProcessing, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -1213,23 +1235,24 @@ namespace LinqToLdap
         /// </summary>
         /// <param name="request">The response from the directory</param>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <returns></returns>
-        public async Task<DirectoryResponse> SendRequestAsync(DirectoryRequest request, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing)
+        public async Task<DirectoryResponse> SendRequestAsync(DirectoryRequest request, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default)
         {
             if (_disposed) throw new ObjectDisposedException(GetType().FullName);
 
-
-            return await Task.Run(() => _connection.SendRequest(request) as DirectoryResponse).ConfigureAwait(false);
+            return await Task.Run(() => _connection.SendRequest(request) as DirectoryResponse, cancellationToken).ConfigureAwait(false);
         }
-
         private async Task<string> UpdateEntryAsync<T>(T entry, string distinguishedName = null, DirectoryControl[] controls = null,
-            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing)
+            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default)
             where T : class
         {
             try
             {
                 if (_disposed) throw new ObjectDisposedException(GetType().FullName);
                 if (entry == null) throw new ArgumentNullException(nameof(entry));
+
+                cancellationToken.ThrowIfCancellationRequested();
 
                 var objectMapping = _configuration.Mapper.GetMapping(entry.GetType());
                 if (objectMapping == null) throw new MappingException("Cannot update an unmapped class.");
@@ -1279,7 +1302,7 @@ namespace LinqToLdap
 
                 ModifyResponse response = null;
 
-                response = await Task.Run(() => _connection.SendRequest(request) as ModifyResponse).ConfigureAwait(false);
+                response = await Task.Run(() => _connection.SendRequest(request) as ModifyResponse, cancellationToken).ConfigureAwait(false);
 
                 response.AssertSuccess();
 
@@ -1299,12 +1322,15 @@ namespace LinqToLdap
         }
 
         private async Task<string> AddEntryAsync<T>(T entry, string distinguishedName = null, DirectoryControl[] controls = null,
-            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing) where T : class
+            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default) where T : class
         {
             try
             {
                 if (_disposed) throw new ObjectDisposedException(GetType().FullName);
                 if (entry == null) throw new ArgumentNullException(nameof(entry));
+
+                cancellationToken.ThrowIfCancellationRequested();
+
                 var objectMapping = _configuration.Mapper.GetMapping(entry.GetType());
                 if (objectMapping == null) throw new MappingException("Cannot add an unmapped class.");
 
@@ -1352,7 +1378,7 @@ namespace LinqToLdap
                 if (Logger != null && Logger.TraceEnabled) Logger.Trace(request.ToLogString());
 
                 AddResponse response = null;
-                response = await Task.Run(() => _connection.SendRequest(request) as AddResponse).ConfigureAwait(false);
+                response = await Task.Run(() => _connection.SendRequest(request) as AddResponse, cancellationToken).ConfigureAwait(false);
 
                 response.AssertSuccess();
 

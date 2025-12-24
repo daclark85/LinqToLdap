@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.DirectoryServices.Protocols;
 using System.Linq;
+using System.Threading;
 
 namespace LinqToLdap
 {
@@ -310,9 +311,10 @@ namespace LinqToLdap
         /// </summary>
         /// <param name="distinguishedName">The distinguished name to look for.</param>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <typeparam name="T">The type of mapped object</typeparam>
         /// <returns></returns>
-        System.Threading.Tasks.Task<T> GetByDNAsync<T>(string distinguishedName, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing) where T : class;
+        System.Threading.Tasks.Task<T> GetByDNAsync<T>(string distinguishedName, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default) where T : class;
 
         /// <summary>
         /// Retrieves the mapped class from the directory using the distinguished name.  <see cref="SearchScope.Base"/> is used.
@@ -320,22 +322,27 @@ namespace LinqToLdap
         /// <param name="distinguishedName">The distinguished name to look for.</param>
         /// <param name="attributes">The attributes to load.</param>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <returns></returns>
-        System.Threading.Tasks.Task<IDirectoryAttributes> GetByDNAsync(string distinguishedName, string[] attributes = null, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing);
+        System.Threading.Tasks.Task<IDirectoryAttributes> GetByDNAsync(string distinguishedName, string[] attributes = null, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Sends the request to the directory.
         /// </summary>
         /// <param name="request">The response from the directory</param>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <returns></returns>
-        System.Threading.Tasks.Task<DirectoryResponse> SendRequestAsync(DirectoryRequest request, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing);
+        System.Threading.Tasks.Task<DirectoryResponse> SendRequestAsync(DirectoryRequest request, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// List server information from RootDSE.
         /// </summary>
+        /// <param name="attributes">Specify specific attributes to load. Some LDAP servers require an explicit request for certain attributes.</param>
+        /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <returns></returns>
-        System.Threading.Tasks.Task<IDirectoryAttributes> ListServerAttributesAsync(string[] attributes = null, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing);
+        System.Threading.Tasks.Task<IDirectoryAttributes> ListServerAttributesAsync(string[] attributes = null, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Adds the entry to the directory and returns the newly saved entry from the directory. If the <paramref name="distinguishedName"/> is
@@ -346,6 +353,7 @@ namespace LinqToLdap
         /// <param name="distinguishedName">The distinguished name for the entry.</param>
         /// <param name="controls">Any <see cref="DirectoryControl"/>s to be sent with the request</param>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <returns></returns>
         /// <exception cref="ArgumentNullException">Thrown if entry is null</exception>
         /// <exception cref="ArgumentException">Thrown if distinguished name is null and there is no mapped distinguished name property.</exception>
@@ -356,7 +364,7 @@ namespace LinqToLdap
         /// </exception>
         /// <exception cref="DirectoryOperationException">Thrown if the add was not successful.</exception>
         /// <exception cref="LdapException">Thrown if the add was not successful.</exception>
-        System.Threading.Tasks.Task<T> AddAndGetAsync<T>(T entry, string distinguishedName = null, DirectoryControl[] controls = null, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing) where T : class;
+        System.Threading.Tasks.Task<T> AddAndGetAsync<T>(T entry, string distinguishedName = null, DirectoryControl[] controls = null, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default) where T : class;
 
         /// <summary>
         /// Adds the entry to the directory and returns the newly saved entry from the directory.
@@ -364,12 +372,13 @@ namespace LinqToLdap
         /// <param name="entry">The attributes for the entry</param>
         /// <param name="controls">Any <see cref="DirectoryControl"/>s to be sent with the request</param>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <returns></returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="entry"/> is null.
         /// </exception>
         /// <exception cref="DirectoryOperationException">Thrown if the add was not successful.</exception>
         /// <exception cref="LdapException">Thrown if the operation fails.</exception>
-        System.Threading.Tasks.Task<IDirectoryAttributes> AddAndGetEntryAsync(IDirectoryAttributes entry, DirectoryControl[] controls = null, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing);
+        System.Threading.Tasks.Task<IDirectoryAttributes> AddAndGetEntryAsync(IDirectoryAttributes entry, DirectoryControl[] controls = null, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Adds the entry to the directory. If the <paramref name="distinguishedName"/> is
@@ -380,6 +389,7 @@ namespace LinqToLdap
         /// <param name="distinguishedName">The distinguished name for the entry.</param>
         /// <param name="controls">Any <see cref="DirectoryControl"/>s to be sent with the request</param>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <returns></returns>
         /// <exception cref="ArgumentNullException">Thrown if entry is null</exception>
         /// <exception cref="ArgumentException">Thrown if distinguished name is null and there is no mapped distinguished name property.</exception>
@@ -390,7 +400,7 @@ namespace LinqToLdap
         /// </exception>
         /// <exception cref="DirectoryOperationException">Thrown if the add was not successful.</exception>
         /// <exception cref="LdapException">Thrown if the add was not successful.</exception>
-        System.Threading.Tasks.Task AddAsync<T>(T entry, string distinguishedName = null, DirectoryControl[] controls = null, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing) where T : class;
+        System.Threading.Tasks.Task AddAsync<T>(T entry, string distinguishedName = null, DirectoryControl[] controls = null, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default) where T : class;
 
         /// <summary>
         /// Adds the entry to the directory.
@@ -398,23 +408,25 @@ namespace LinqToLdap
         /// <param name="entry">The attributes for the entry</param>
         /// <param name="controls">Any <see cref="DirectoryControl"/>s to be sent with the request</param>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <returns></returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="entry"/> is null.
         /// </exception>
         /// <exception cref="DirectoryOperationException">Thrown if the add was not successful.</exception>
         /// <exception cref="LdapException">Thrown if the operation fails.</exception>
-        System.Threading.Tasks.Task AddEntryAsync(IDirectoryAttributes entry, DirectoryControl[] controls = null, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing);
+        System.Threading.Tasks.Task AddEntryAsync(IDirectoryAttributes entry, DirectoryControl[] controls = null, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Deletes an entry from the directory.
         /// </summary>
         /// <param name="distinguishedName">The distinguished name of the entry</param>
         /// <param name="controls">Any <see cref="DirectoryControl"/>s to be sent with the request</param>
-        /// <exception cref="ArgumentNullException">Thrown if <paramref name="distinguishedName"/> is null, empty or white space.</exception>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <exception cref="ArgumentNullException">Thrown if <paramref name="distinguishedName"/> is null, empty or white space.</exception>
         /// <exception cref="DirectoryOperationException">Thrown if the operation fails.</exception>
         /// <exception cref="LdapException">Thrown if the operation fails.</exception>
-        System.Threading.Tasks.Task DeleteAsync(string distinguishedName, DirectoryControl[] controls = null, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing);
+        System.Threading.Tasks.Task DeleteAsync(string distinguishedName, DirectoryControl[] controls = null, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Updates the entry in the directory and returns the updated version from the directory. If the <paramref name="distinguishedName"/> is
@@ -424,6 +436,7 @@ namespace LinqToLdap
         /// <param name="distinguishedName">The distinguished name for the entry.</param>
         /// <param name="controls">Any <see cref="DirectoryControl"/>s to be sent with the request</param>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <typeparam name="T">The type of entry.</typeparam>
         /// <returns></returns>
         /// <exception cref="ArgumentNullException">Thrown if entry is null</exception>
@@ -434,7 +447,7 @@ namespace LinqToLdap
         /// <exception cref="ArgumentException">Thrown if distinguished name is null and there is no mapped distinguished name property.</exception>
         /// <exception cref="DirectoryOperationException">Thrown if the operation is not successful</exception>
         /// <exception cref="LdapException">Thrown if the operation is not successful</exception>
-        System.Threading.Tasks.Task<T> UpdateAndGetAsync<T>(T entry, string distinguishedName = null, DirectoryControl[] controls = null, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing) where T : class;
+        System.Threading.Tasks.Task<T> UpdateAndGetAsync<T>(T entry, string distinguishedName = null, DirectoryControl[] controls = null, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default) where T : class;
 
         /// <summary>
         /// Updates the entry in the directory and returns the updated version from the directory.
@@ -442,12 +455,13 @@ namespace LinqToLdap
         /// <param name="entry">The attributes for the entry.</param>
         /// <param name="controls">Any <see cref="DirectoryControl"/>s to be sent with the request</param>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <returns></returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="entry"/> is null.
         /// </exception>
         /// <exception cref="DirectoryOperationException">Thrown if the operation fails</exception>
         /// <exception cref="LdapException">Thrown if the operation fails</exception>
-        System.Threading.Tasks.Task<IDirectoryAttributes> UpdateAndGetEntryAsync(IDirectoryAttributes entry, DirectoryControl[] controls = null, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing);
+        System.Threading.Tasks.Task<IDirectoryAttributes> UpdateAndGetEntryAsync(IDirectoryAttributes entry, DirectoryControl[] controls = null, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Updates the entry in the directory. If the <paramref name="distinguishedName"/> is
@@ -457,6 +471,7 @@ namespace LinqToLdap
         /// <param name="distinguishedName">The distinguished name for the entry.</param>
         /// <param name="controls">Any <see cref="DirectoryControl"/>s to be sent with the request</param>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <typeparam name="T">The type of entry.</typeparam>
         /// <returns></returns>
         /// <exception cref="ArgumentNullException">Thrown if entry is null</exception>
@@ -469,7 +484,7 @@ namespace LinqToLdap
         /// <exception cref="InvalidOperationException">Thrown if <paramref name="entry"/> is <see cref="DirectoryObjectBase"/> but the entry is not tracking changes.</exception>
         /// <exception cref="DirectoryOperationException">Thrown if the operation is not successful</exception>
         /// <exception cref="LdapException">Thrown if the operation is not successful</exception>
-        System.Threading.Tasks.Task UpdateAsync<T>(T entry, string distinguishedName = null, DirectoryControl[] controls = null, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing) where T : class;
+        System.Threading.Tasks.Task UpdateAsync<T>(T entry, string distinguishedName = null, DirectoryControl[] controls = null, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default) where T : class;
 
         /// <summary>
         /// Updates the entry in the directory.
@@ -477,12 +492,13 @@ namespace LinqToLdap
         /// <param name="entry">The attributes for the entry.</param>
         /// <param name="controls">Any <see cref="DirectoryControl"/>s to be sent with the request</param>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <returns></returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="entry"/> is null.
         /// </exception>
         /// <exception cref="DirectoryOperationException">Thrown if the operation fails</exception>
         /// <exception cref="LdapException">Thrown if the operation fails</exception>
-        System.Threading.Tasks.Task UpdateEntryAsync(IDirectoryAttributes entry, DirectoryControl[] controls = null, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing);
+        System.Threading.Tasks.Task UpdateEntryAsync(IDirectoryAttributes entry, DirectoryControl[] controls = null, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Adds the attribute to an entry.
@@ -492,9 +508,10 @@ namespace LinqToLdap
         /// <param name="value">The value for the entry.</param>
         /// <param name="controls">Any <see cref="DirectoryControl"/>s to be sent with the request</param>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <exception cref="DirectoryOperationException">Thrown if the operation fails.</exception>
         /// <exception cref="LdapConnection">Thrown if the operation fails.</exception>
-        System.Threading.Tasks.Task AddAttributeAsync(string distinguishedName, string attributeName, object value = null, DirectoryControl[] controls = null, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing);
+        System.Threading.Tasks.Task AddAttributeAsync(string distinguishedName, string attributeName, object value = null, DirectoryControl[] controls = null, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Removes the attribute from an entry.
@@ -504,10 +521,11 @@ namespace LinqToLdap
         /// <param name="value">The optional value. If null the whole attribute will be removed, otherwise the value will be removed.</param>
         /// <param name="controls">Any <see cref="DirectoryControl"/>s to be sent with the request</param>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="distinguishedName"/> or <paramref name="attributeName"/> is null, empty or white space.</exception>
         /// <exception cref="DirectoryOperationException">Thrown if the operation fails.</exception>
         /// <exception cref="LdapConnection">Thrown if the operation fails.</exception>
-        System.Threading.Tasks.Task DeleteAttributeAsync(string distinguishedName, string attributeName, object value = null, DirectoryControl[] controls = null, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing);
+        System.Threading.Tasks.Task DeleteAttributeAsync(string distinguishedName, string attributeName, object value = null, DirectoryControl[] controls = null, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Moves the entry from one container to another without modifying the entry's name and return's the new distinguished name.
@@ -517,6 +535,7 @@ namespace LinqToLdap
         /// <param name="deleteOldRDN">Maps to <see cref="P:System.DirectoryServices.Protocols.ModifyDNRequest.DeleteOldRdn"/>. Defaults to null to use default behavior from <see cref="P:System.DirectoryServices.Protocols.ModifyDNRequest.DeleteOldRdn"/>.</param>
         /// <param name="controls">Any <see cref="DirectoryControl"/>s to be sent with the request</param>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <exception cref="ArgumentException">
         /// Thrown if <paramref name="currentDistinguishedName"/> has an invalid format.
         /// </exception>
@@ -525,7 +544,7 @@ namespace LinqToLdap
         /// </exception>
         /// <exception cref="DirectoryOperationException">Thrown if the operation fails.</exception>
         /// <exception cref="LdapConnection">Thrown if the operation fails.</exception>
-        System.Threading.Tasks.Task<string> MoveEntryAsync(string currentDistinguishedName, string newNamingContext, bool? deleteOldRDN = null, DirectoryControl[] controls = null, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing);
+        System.Threading.Tasks.Task<string> MoveEntryAsync(string currentDistinguishedName, string newNamingContext, bool? deleteOldRDN = null, DirectoryControl[] controls = null, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Renames the entry within the same container and return's the new distinguished name. The <paramref name="newName"/> should be in the format
@@ -536,6 +555,7 @@ namespace LinqToLdap
         /// <param name="deleteOldRDN">Maps to <see cref="P:System.DirectoryServices.Protocols.ModifyDNRequest.DeleteOldRdn"/>. Defaults to null to use default behavior from <see cref="P:System.DirectoryServices.Protocols.ModifyDNRequest.DeleteOldRdn"/>.</param>
         /// <param name="controls">Any <see cref="DirectoryControl"/>s to be sent with the request</param>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <exception cref="ArgumentException">
         /// Thrown if <paramref name="currentDistinguishedName"/> has an invalid format.
         /// </exception>
@@ -544,7 +564,7 @@ namespace LinqToLdap
         /// </exception>
         /// <exception cref="DirectoryOperationException">Thrown if the operation fails.</exception>
         /// <exception cref="LdapConnection">Thrown if the operation fails.</exception>
-        System.Threading.Tasks.Task<string> RenameEntryAsync(string currentDistinguishedName, string newName, bool? deleteOldRDN = null, DirectoryControl[] controls = null, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing);
+        System.Threading.Tasks.Task<string> RenameEntryAsync(string currentDistinguishedName, string newName, bool? deleteOldRDN = null, DirectoryControl[] controls = null, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Uses range retrieval to get all values for <paramref name="attributeName"/> on <paramref name="distinguishedName"/>.
@@ -554,11 +574,12 @@ namespace LinqToLdap
         /// <param name="attributeName">The attribute to load.</param>
         /// <param name="start">The starting point for the range. Defaults to 0.</param>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <exception cref="ArgumentNullException">
         /// Thrown if <paramref name="distinguishedName"/> or <paramref name="attributeName"/> is null, empty or white space.
         /// </exception>
         /// <returns></returns>
-        System.Threading.Tasks.Task<IList<TValue>> RetrieveRangesAsync<TValue>(string distinguishedName, string attributeName, int start = 0, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing);
+        System.Threading.Tasks.Task<IList<TValue>> RetrieveRangesAsync<TValue>(string distinguishedName, string attributeName, int start = 0, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default);
 
     }
 }

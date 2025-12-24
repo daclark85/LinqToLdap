@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.DirectoryServices.Protocols;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace LinqToLdap.Async
@@ -18,6 +19,68 @@ namespace LinqToLdap.Async
     public static class LdapConnectionAsyncExtensions
     {
         /// <summary>
+        /// Sends a directory request asynchronously using the APM-to-TAP pattern.
+        /// </summary>
+        private static Task<TResponse> SendRequestAsync<TResponse>(
+            this LdapConnection connection,
+            DirectoryRequest request,
+            PartialResultProcessing resultProcessing,
+            CancellationToken cancellationToken = default)
+            where TResponse : DirectoryResponse
+        {
+            if (connection == null) throw new ArgumentNullException(nameof(connection));
+            if (request == null) throw new ArgumentNullException(nameof(request));
+
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return Task.FromCanceled<TResponse>(cancellationToken);
+            }
+
+            var tcs = new TaskCompletionSource<TResponse>();
+
+            // Register cancellation
+            CancellationTokenRegistration registration = default;
+            if (cancellationToken.CanBeCanceled)
+            {
+                registration = cancellationToken.Register(() =>
+                {
+                    tcs.TrySetCanceled(cancellationToken);
+                }, useSynchronizationContext: false);
+            }
+
+            try
+            {
+                connection.BeginSendRequest(
+                    request,
+                    resultProcessing,
+                    asyncResult =>
+                    {
+                        try
+                        {
+                            var response = connection.EndSendRequest(asyncResult) as TResponse;
+                            tcs.TrySetResult(response);
+                        }
+                        catch (Exception ex)
+                        {
+                            tcs.TrySetException(ex);
+                        }
+                        finally
+                        {
+                            registration.Dispose();
+                        }
+                    },
+                    null);
+            }
+            catch (Exception ex)
+            {
+                registration.Dispose();
+                tcs.TrySetException(ex);
+            }
+
+            return tcs.Task;
+        }
+
+        /// <summary>
         /// Adds the entry to the directory.
         /// </summary>
         /// <param name="connection">The connection to the directory.</param>
@@ -26,19 +89,22 @@ namespace LinqToLdap.Async
         /// <param name="controls">Any <see cref="DirectoryControl"/>s to be sent with the request</param>
         /// <param name="listeners">The event listeners to be notified.</param>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <returns></returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="connection"/> or <paramref name="entry"/>> is null.
         /// </exception>
         /// <exception cref="DirectoryOperationException">Thrown if the add was not successful.</exception>
         /// <exception cref="LdapException">Thrown if the operation fails.</exception>
         public static async Task AddAsync(this LdapConnection connection, IDirectoryAttributes entry, ILinqToLdapLogger log = null,
-            DirectoryControl[] controls = null, IEnumerable<IAddEventListener> listeners = null, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing)
+            DirectoryControl[] controls = null, IEnumerable<IAddEventListener> listeners = null, 
+            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing,
+            CancellationToken cancellationToken = default)
         {
             string distinguishedName = null;
             try
             {
-                if (connection == null) throw new ArgumentNullException("connection");
-                if (entry == null) throw new ArgumentNullException("entry");
+                if (connection == null) throw new ArgumentNullException(nameof(connection));
+                if (entry == null) throw new ArgumentNullException(nameof(entry));
                 distinguishedName = entry.DistinguishedName;
 
                 if (distinguishedName.IsNullOrEmpty()) throw new ArgumentException("entry.DistinguishedName is invalid.");
@@ -60,9 +126,7 @@ namespace LinqToLdap.Async
 
                 if (log != null && log.TraceEnabled) log.Trace(request.ToLogString());
 
-                AddResponse response = null;
-
-                response = await Task.Run(() => connection.SendRequest(request) as AddResponse).ConfigureAwait(false);
+                var response = await connection.SendRequestAsync<AddResponse>(request, resultProcessing, cancellationToken).ConfigureAwait(false);
                 response.AssertSuccess();
 
                 if (listeners != null)
@@ -90,6 +154,7 @@ namespace LinqToLdap.Async
         /// <param name="controls">Any <see cref="DirectoryControl"/>s to be sent with the request</param>
         /// <param name="listeners">The event listeners to be notified.</param>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <returns></returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="connection"/> or <paramref name="entry"/>> is null.
         /// </exception>
@@ -97,11 +162,12 @@ namespace LinqToLdap.Async
         /// <exception cref="LdapException">Thrown if the operation fails.</exception>
         public static async Task<IDirectoryAttributes> AddAndGetAsync(this LdapConnection connection, IDirectoryAttributes entry,
             ILinqToLdapLogger log = null, DirectoryControl[] controls = null, IEnumerable<IAddEventListener> listeners = null,
-            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing)
+            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing,
+            CancellationToken cancellationToken = default)
         {
-            await AddAsync(connection, entry, log, controls, listeners, resultProcessing).ConfigureAwait(false);
+            await AddAsync(connection, entry, log, controls, listeners, resultProcessing, cancellationToken).ConfigureAwait(false);
 
-            return await GetByDNAsync(connection, entry.DistinguishedName, log, null, resultProcessing).ConfigureAwait(false);
+            return await GetByDNAsync(connection, entry.DistinguishedName, log, null, resultProcessing, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -113,17 +179,20 @@ namespace LinqToLdap.Async
         /// <param name="log">The log for query information. Defaults to null.</param>
         /// <param name="listeners">The event listeners to be notified.</param>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="distinguishedName"/> is null, empty or white space.</exception>
         /// <exception cref="DirectoryOperationException">Thrown if the operation fails.</exception>
         /// <exception cref="LdapException">Thrown if the operation fails.</exception>
         public static async Task DeleteAsync(this LdapConnection connection, string distinguishedName, ILinqToLdapLogger log = null,
-            DirectoryControl[] controls = null, IEnumerable<IDeleteEventListener> listeners = null, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing)
+            DirectoryControl[] controls = null, IEnumerable<IDeleteEventListener> listeners = null, 
+            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing,
+            CancellationToken cancellationToken = default)
         {
             try
             {
-                if (connection == null) throw new ArgumentNullException("connection");
+                if (connection == null) throw new ArgumentNullException(nameof(connection));
                 if (distinguishedName.IsNullOrEmpty())
-                    throw new ArgumentNullException("distinguishedName");
+                    throw new ArgumentNullException(nameof(distinguishedName));
 
                 var request = new DeleteRequest(distinguishedName);
                 if (controls != null)
@@ -142,9 +211,7 @@ namespace LinqToLdap.Async
 
                 if (log != null && log.TraceEnabled) log.Trace(request.ToLogString());
 
-                DeleteResponse response = null;
-
-                response = await Task.Run(() => connection.SendRequest(request) as DeleteResponse).ConfigureAwait(false);
+                var response = await connection.SendRequestAsync<DeleteResponse>(request, resultProcessing, cancellationToken).ConfigureAwait(false);
                 response.AssertSuccess();
 
                 if (listeners != null)
@@ -173,6 +240,7 @@ namespace LinqToLdap.Async
         /// <param name="controls">Any <see cref="DirectoryControl"/>s to be sent with the request</param>
         /// <param name="listeners">The event listeners to be notified.</param>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <returns></returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="entry"/> is null.
         /// </exception>
@@ -180,13 +248,14 @@ namespace LinqToLdap.Async
         /// <exception cref="LdapException">Thrown if the operation fails</exception>
         public static async Task UpdateAsync(this LdapConnection connection, IDirectoryAttributes entry,
             ILinqToLdapLogger log = null, DirectoryControl[] controls = null, IEnumerable<IUpdateEventListener> listeners = null,
-            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing)
+            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing,
+            CancellationToken cancellationToken = default)
         {
             string distinguishedName = null;
             try
             {
-                if (connection == null) throw new ArgumentNullException("connection");
-                if (entry == null) throw new ArgumentNullException("entry");
+                if (connection == null) throw new ArgumentNullException(nameof(connection));
+                if (entry == null) throw new ArgumentNullException(nameof(entry));
 
                 distinguishedName = entry.DistinguishedName;
                 if (distinguishedName.IsNullOrEmpty()) throw new ArgumentException("entry.DistinguishedName is invalid.");
@@ -212,9 +281,7 @@ namespace LinqToLdap.Async
 
                     if (log != null && log.TraceEnabled) log.Trace(request.ToLogString());
 
-                    ModifyResponse response = null;
-
-                    response = await Task.Run(() => connection.SendRequest(request) as ModifyResponse).ConfigureAwait(false);
+                    var response = await connection.SendRequestAsync<ModifyResponse>(request, resultProcessing, cancellationToken).ConfigureAwait(false);
                     response.AssertSuccess();
 
                     if (listeners != null)
@@ -248,6 +315,7 @@ namespace LinqToLdap.Async
         /// <param name="controls">Any <see cref="DirectoryControl"/>s to be sent with the request</param>
         /// <param name="listeners">The event listeners to be notified.</param>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <returns></returns>
         /// <exception cref="ArgumentNullException">Thrown if <paramref name="entry"/> is null.
         /// </exception>
@@ -255,11 +323,12 @@ namespace LinqToLdap.Async
         /// <exception cref="LdapException">Thrown if the operation fails</exception>
         public static async Task<IDirectoryAttributes> UpdateAndGetAsync(this LdapConnection connection, IDirectoryAttributes entry,
             ILinqToLdapLogger log = null, DirectoryControl[] controls = null, IEnumerable<IUpdateEventListener> listeners = null,
-            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing)
+            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing,
+            CancellationToken cancellationToken = default)
         {
-            await UpdateAsync(connection, entry, log, controls, listeners, resultProcessing).ConfigureAwait(false);
+            await UpdateAsync(connection, entry, log, controls, listeners, resultProcessing, cancellationToken).ConfigureAwait(false);
 
-            return await GetByDNAsync(connection, entry.DistinguishedName, log, null, resultProcessing).ConfigureAwait(false);
+            return await GetByDNAsync(connection, entry.DistinguishedName, log, null, resultProcessing, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -271,13 +340,15 @@ namespace LinqToLdap.Async
         /// Specify specific attributes to load.  Some LDAP servers require an explicit request for certain attributes.
         /// </param>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <returns></returns>
         public static async Task<IDirectoryAttributes> ListServerAttributesAsync(this LdapConnection connection, string[] attributes = null, ILinqToLdapLogger log = null,
-            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing)
+            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing,
+            CancellationToken cancellationToken = default)
         {
             try
             {
-                if (connection == null) throw new ArgumentNullException("connection");
+                if (connection == null) throw new ArgumentNullException(nameof(connection));
                 using (var provider = new DirectoryQueryProvider(
                     connection, SearchScope.Base, new ServerObjectMapping(), false)
                 { Log = log, IsDynamic = true })
@@ -292,7 +363,7 @@ namespace LinqToLdap.Async
                         query = query.Select(attributes);
                     }
 
-                    var results = await QueryableAsyncExtensions.FirstOrDefaultAsync(query, resultProcessing).ConfigureAwait(false);
+                    var results = await QueryableAsyncExtensions.FirstOrDefaultAsync(query, resultProcessing, cancellationToken).ConfigureAwait(false);
 
                     return results ?? new DirectoryAttributes();
                 }
@@ -312,13 +383,15 @@ namespace LinqToLdap.Async
         /// <param name="distinguishedName">The distinguished name to look for.</param>
         /// <param name="attributes">The attributes to load.</param>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <returns></returns>
         public static async Task<IDirectoryAttributes> GetByDNAsync(this LdapConnection connection, string distinguishedName, ILinqToLdapLogger log = null, string[] attributes = null,
-            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing)
+            PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing,
+            CancellationToken cancellationToken = default)
         {
             try
             {
-                if (connection == null) throw new ArgumentNullException("connection");
+                if (connection == null) throw new ArgumentNullException(nameof(connection));
 
                 var request = new SearchRequest { DistinguishedName = distinguishedName, Scope = SearchScope.Base };
 
@@ -329,7 +402,7 @@ namespace LinqToLdap.Async
 
                 if (log != null && log.TraceEnabled) log.Trace(request.ToLogString());
 
-                var response = await Task.Run(() => connection.SendRequest(request) as SearchResponse).ConfigureAwait(false);
+                var response = await connection.SendRequestAsync<SearchResponse>(request, resultProcessing, cancellationToken).ConfigureAwait(false);
                 response.AssertSuccess();
 
                 return (response.Entries.Count == 0
@@ -353,6 +426,7 @@ namespace LinqToLdap.Async
         /// <param name="deleteOldRDN">Maps to <see cref="P:System.DirectoryServices.Protocols.ModifyDNRequest.DeleteOldRdn"/>. Defaults to null to use default behavior</param>
         /// <param name="controls">Any <see cref="DirectoryControl"/>s to be sent with the request</param>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <exception cref="ArgumentException">
         /// Thrown if <paramref name="currentDistinguishedName"/> has an invalid format.
         /// </exception>
@@ -361,22 +435,23 @@ namespace LinqToLdap.Async
         /// </exception>
         /// <exception cref="DirectoryOperationException">Thrown if the operation fails.</exception>
         /// <exception cref="LdapConnection">Thrown if the operation fails.</exception>
-        public static async System.Threading.Tasks.Task<string> MoveEntryAsync(this LdapConnection connection, string currentDistinguishedName, string newNamingContext, ILinqToLdapLogger log = null,
-            bool? deleteOldRDN = null, DirectoryControl[] controls = null, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing)
+        public static async Task<string> MoveEntryAsync(this LdapConnection connection, string currentDistinguishedName, string newNamingContext, ILinqToLdapLogger log = null,
+            bool? deleteOldRDN = null, DirectoryControl[] controls = null, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing,
+            CancellationToken cancellationToken = default)
         {
             try
             {
-                if (connection == null) throw new ArgumentNullException("connection");
+                if (connection == null) throw new ArgumentNullException(nameof(connection));
 
                 if (currentDistinguishedName.IsNullOrEmpty())
-                    throw new ArgumentNullException("currentDistinguishedName");
+                    throw new ArgumentNullException(nameof(currentDistinguishedName));
 
                 if (newNamingContext.IsNullOrEmpty())
-                    throw new ArgumentNullException("newNamingContext");
+                    throw new ArgumentNullException(nameof(newNamingContext));
 
                 var name = DnParser.GetEntryName(currentDistinguishedName);
 
-                var response = await SendModifyDnRequestAsync(connection, currentDistinguishedName, newNamingContext, name, deleteOldRDN, controls, log, resultProcessing).ConfigureAwait(false);
+                var response = await SendModifyDnRequestAsync(connection, currentDistinguishedName, newNamingContext, name, deleteOldRDN, controls, log, resultProcessing, cancellationToken).ConfigureAwait(false);
                 response.AssertSuccess();
 
                 return string.Format("{0},{1}", name, newNamingContext);
@@ -400,6 +475,7 @@ namespace LinqToLdap.Async
         /// <param name="deleteOldRDN">Maps to <see cref="P:System.DirectoryServices.Protocols.ModifyDNRequest.DeleteOldRdn"/>. Defaults to null to use default behavior</param>
         /// <param name="controls">Any <see cref="DirectoryControl"/>s to be sent with the request</param>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <exception cref="ArgumentException">
         /// Thrown if <paramref name="currentDistinguishedName"/> has an invalid format.
         /// </exception>
@@ -409,22 +485,23 @@ namespace LinqToLdap.Async
         /// <exception cref="DirectoryOperationException">Thrown if the operation fails.</exception>
         /// <exception cref="LdapConnection">Thrown if the operation fails.</exception>
         public static async Task<string> RenameEntryAsync(this LdapConnection connection, string currentDistinguishedName, string newName, ILinqToLdapLogger log = null,
-            bool? deleteOldRDN = null, DirectoryControl[] controls = null, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing)
+            bool? deleteOldRDN = null, DirectoryControl[] controls = null, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing,
+            CancellationToken cancellationToken = default)
         {
             try
             {
-                if (connection == null) throw new ArgumentNullException("connection");
+                if (connection == null) throw new ArgumentNullException(nameof(connection));
 
                 if (currentDistinguishedName.IsNullOrEmpty())
-                    throw new ArgumentNullException("currentDistinguishedName");
+                    throw new ArgumentNullException(nameof(currentDistinguishedName));
 
                 if (newName.IsNullOrEmpty())
-                    throw new ArgumentNullException("newName");
+                    throw new ArgumentNullException(nameof(newName));
 
                 newName = DnParser.FormatName(newName, currentDistinguishedName);
                 var container = DnParser.GetEntryContainer(currentDistinguishedName);
 
-                var response = await SendModifyDnRequestAsync(connection, currentDistinguishedName, container, newName, deleteOldRDN, controls, log, resultProcessing).ConfigureAwait(false);
+                var response = await SendModifyDnRequestAsync(connection, currentDistinguishedName, container, newName, deleteOldRDN, controls, log, resultProcessing, cancellationToken).ConfigureAwait(false);
                 response.AssertSuccess();
 
                 return string.Format("{0},{1}", newName, container);
@@ -447,22 +524,24 @@ namespace LinqToLdap.Async
         /// <param name="attributeName">The attribute to load.</param>
         /// <param name="start">The starting point for the range. Defaults to 0.</param>
         /// <param name="resultProcessing">How the async results are processed</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <exception cref="ArgumentNullException">
         /// Thrown if <paramref name="distinguishedName"/> or <paramref name="attributeName"/> is null, empty or white space.
         /// </exception>
         /// <returns></returns>
         public static async Task<IList<TValue>> RetrieveRangesAsync<TValue>(this LdapConnection connection, string distinguishedName, string attributeName,
-            int start = 0, ILinqToLdapLogger log = null, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing)
+            int start = 0, ILinqToLdapLogger log = null, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing,
+            CancellationToken cancellationToken = default)
         {
             int idx = start;
             int step = 0;
             string currentRange = null;
             try
             {
-                if (connection == null) throw new ArgumentNullException("connection");
+                if (connection == null) throw new ArgumentNullException(nameof(connection));
 
-                if (distinguishedName.IsNullOrEmpty()) throw new ArgumentNullException("distinguishedName");
-                if (attributeName.IsNullOrEmpty()) throw new ArgumentNullException("attributeName");
+                if (distinguishedName.IsNullOrEmpty()) throw new ArgumentNullException(nameof(distinguishedName));
+                if (attributeName.IsNullOrEmpty()) throw new ArgumentNullException(nameof(attributeName));
                 //Code pulled from http://dunnry.com/blog/2007/08/10/RangeRetrievalUsingSystemDirectoryServicesProtocols.aspx
 
                 var list = new List<TValue>();
@@ -482,8 +561,7 @@ namespace LinqToLdap.Async
 
                 while (true)
                 {
-                    SearchResponse response = null;
-                    response = await Task.Run(() => connection.SendRequest(request) as SearchResponse).ConfigureAwait(false);
+                    var response = await connection.SendRequestAsync<SearchResponse>(request, resultProcessing, cancellationToken).ConfigureAwait(false);
 
                     response.AssertSuccess();
 
@@ -524,7 +602,8 @@ namespace LinqToLdap.Async
         }
 
         private static async Task<ModifyDNResponse> SendModifyDnRequestAsync(LdapConnection connection, string dn, string parentDn, string newName, bool? deleteOldRDN, DirectoryControl[] controls,
-            ILinqToLdapLogger log = null, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing)
+            ILinqToLdapLogger log = null, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing,
+            CancellationToken cancellationToken = default)
         {
             var request = new ModifyDNRequest
             {
@@ -542,7 +621,7 @@ namespace LinqToLdap.Async
                 request.Controls.AddRange(controls);
             }
             if (log != null && log.TraceEnabled) log.Trace(request.ToLogString());
-            return await Task.Run(() => connection.SendRequest(request) as ModifyDNResponse).ConfigureAwait(false);
+            return await connection.SendRequestAsync<ModifyDNResponse>(request, resultProcessing, cancellationToken).ConfigureAwait(false);
         }
     }
 }

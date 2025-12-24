@@ -1178,6 +1178,11 @@ namespace LinqToLdap.Visitors
             {
                 _asyncProcessing = (PartialResultProcessing)c.Value;
             }
+            else if (c.Type == typeof(System.Threading.CancellationToken))
+            {
+                // CancellationToken is used for async operations but shouldn't affect the filter
+                // Just ignore it
+            }
             else if (_currentProperty != null)
             {
                 var str = _currentProperty.FormatValueToFilter(c.Value);
