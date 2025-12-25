@@ -256,7 +256,7 @@ namespace LinqToLdap.Mapping
 
         internal IPropertyMapperGeneric<TProperty> Map<TProperty>(PropertyInfo propertyInfo, bool isDistinguishedName = false, ReadOnly? readOnly = null)
         {
-            if (propertyInfo == null) throw new ArgumentNullException(nameof(propertyInfo));
+            ArgumentNullException.ThrowIfNull(propertyInfo, nameof(propertyInfo));
 
             if (isDistinguishedName && PropertyMappings.Any(p => p.IsDistinguishedName))
                 throw new MappingException("Cannot specify more than one DistinguishedName property.");
@@ -279,7 +279,7 @@ namespace LinqToLdap.Mapping
 
         internal TBuilder Map<TBuilder>(TBuilder builder) where TBuilder : IPropertyMappingBuilder
         {
-            if (builder.PropertyInfo == null) throw new ArgumentNullException(nameof(builder));
+            ArgumentNullException.ThrowIfNull(builder, nameof(builder));
 
             if (builder.IsDistinguishedName && PropertyMappings.Any(p => p.IsDistinguishedName))
                 throw new MappingException("Cannot specify more than one DistinguishedName property.");
@@ -298,7 +298,7 @@ namespace LinqToLdap.Mapping
         /// <returns></returns>
         protected IPropertyMapper MapPropertyInfo(PropertyInfo propertyInfo, bool isDistinguishedName = false, ReadOnly? readOnly = null)
         {
-            if (propertyInfo == null) throw new ArgumentNullException(nameof(propertyInfo));
+            ArgumentNullException.ThrowIfNull(propertyInfo, nameof(propertyInfo));
 
             if (isDistinguishedName && PropertyMappings.Any(p => p.IsDistinguishedName))
                 throw new MappingException("Cannot specify more than one DistinguishedName property.");

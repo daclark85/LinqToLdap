@@ -409,7 +409,7 @@ namespace LinqToLdap.Async
             PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing,
             CancellationToken cancellationToken = default)
         {
-            if (source == null) throw new ArgumentNullException(nameof(source));
+            ArgumentNullException.ThrowIfNull(source, nameof(source));
             if (pageSize < 1) throw new ArgumentException("pageSize must be greater than 0");
 
             if (source.Provider is IAsyncQueryProvider asyncProvider)

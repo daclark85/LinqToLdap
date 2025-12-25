@@ -20,8 +20,8 @@ namespace LinqToLdap
 
         public DirectoryQueryProvider(LdapConnection connection, SearchScope scope, IObjectMapping mapping, bool pagingEnabled)
         {
-            if (mapping == null) throw new ArgumentNullException("mapping");
-            if (connection == null) throw new ArgumentNullException("connection");
+            ArgumentNullException.ThrowIfNull(connection, nameof(connection));
+            ArgumentNullException.ThrowIfNull(mapping, nameof(mapping));
 
             _scope = scope;
 
@@ -58,7 +58,7 @@ namespace LinqToLdap
         {
             try
             {
-                if (_disposed) throw new ObjectDisposedException(GetType().FullName);
+                ObjectDisposedException.ThrowIf(_disposed, this);
 
                 var command = TranslateExpression(expression);
 
@@ -82,7 +82,7 @@ namespace LinqToLdap
         {
             try
             {
-                if (_disposed) throw new ObjectDisposedException(GetType().FullName);
+                ObjectDisposedException.ThrowIf(_disposed, this);
 
                 var command = TranslateExpression(expression);
 

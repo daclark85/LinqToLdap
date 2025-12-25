@@ -14,14 +14,17 @@ namespace LinqToLdap
 
         public DirectoryQuery(QueryProvider provider)
         {
-            _provider = provider ?? throw new ArgumentNullException("provider");
+            ArgumentNullException.ThrowIfNull(provider, nameof(provider));
+            _provider = provider;
             _expression = Expression.Constant(this);
         }
 
         public DirectoryQuery(QueryProvider provider, Expression expression)
         {
-            _provider = provider ?? throw new ArgumentNullException("provider");
-            _expression = expression ?? throw new ArgumentNullException("expression");
+            ArgumentNullException.ThrowIfNull(provider, nameof(provider));
+            ArgumentNullException.ThrowIfNull(expression, nameof(expression));
+            _provider = provider;
+            _expression = expression;
         }
 
         /// <summary>

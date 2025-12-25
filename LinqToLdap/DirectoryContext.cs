@@ -1,5 +1,4 @@
 ﻿using LinqToLdap.Async;
-using System.Threading.Tasks;
 using LinqToLdap.Collections;
 using LinqToLdap.EventListeners;
 using LinqToLdap.Exceptions;
@@ -12,6 +11,8 @@ using System.DirectoryServices.Protocols;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
+using System.Xml.Linq;
 
 namespace LinqToLdap
 {
@@ -44,7 +45,8 @@ namespace LinqToLdap
             _configuration = configuration;
             Logger = _configuration.Log;
             _disposeOfConnection = disposeOfConnection;
-            _connection = connection ?? throw new ArgumentNullException("connection");
+            _connection = connection;
+            ArgumentNullException.ThrowIfNull(connection, nameof(connection));
         }
 
         /// <summary>
@@ -129,7 +131,7 @@ namespace LinqToLdap
         {
             try
             {
-                if (_disposed) throw new ObjectDisposedException(GetType().FullName);
+                ObjectDisposedException.ThrowIf(_disposed, this);
                 var mapping = _configuration.Mapper.Map<T>(namingContext, objectClass, objectClasses, objectCategory);
                 var provider = new DirectoryQueryProvider(_connection, scope, mapping, _configuration.PagingEnabled)
                 {
@@ -195,7 +197,7 @@ namespace LinqToLdap
         {
             try
             {
-                if (_disposed) throw new ObjectDisposedException(GetType().FullName);
+                ObjectDisposedException.ThrowIf(_disposed, this);
                 var mapping = new DynamicObjectMapping(namingContext, objectClasses, objectCategory, objectClass);
                 var provider = new DirectoryQueryProvider(_connection, scope, mapping, _configuration.PagingEnabled)
                 {
@@ -226,7 +228,7 @@ namespace LinqToLdap
         /// <returns></returns>
         public IDirectoryAttributes ListServerAttributes(params string[] attributes)
         {
-            if (_disposed) throw new ObjectDisposedException(GetType().FullName);
+            ObjectDisposedException.ThrowIf(_disposed, this);
             return _connection.ListServerAttributes(attributes, Logger);
         }
 
@@ -243,7 +245,7 @@ namespace LinqToLdap
         public async Task<IDirectoryAttributes> ListServerAttributesAsync(string[] attributes = null,
             PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default)
         {
-            if (_disposed) throw new ObjectDisposedException(GetType().FullName);
+            ObjectDisposedException.ThrowIf(_disposed, this);
             return await LdapConnectionAsyncExtensions.ListServerAttributesAsync(_connection, attributes, Logger, resultProcessing, cancellationToken).ConfigureAwait(false);
         }
 
@@ -259,7 +261,7 @@ namespace LinqToLdap
         public async Task<IDirectoryAttributes> GetByDNAsync(string distinguishedName, string[] attributes = null,
             PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default)
         {
-            if (_disposed) throw new ObjectDisposedException(GetType().FullName);
+            ObjectDisposedException.ThrowIf(_disposed, this);
             return await LdapConnectionAsyncExtensions.GetByDNAsync(_connection, distinguishedName, Logger, attributes, resultProcessing, cancellationToken).ConfigureAwait(false);
         }
 
@@ -276,7 +278,7 @@ namespace LinqToLdap
         {
             try
             {
-                if (_disposed) throw new ObjectDisposedException(GetType().FullName);
+                ObjectDisposedException.ThrowIf(_disposed, this);
 
                 cancellationToken.ThrowIfCancellationRequested();
 
@@ -328,7 +330,7 @@ namespace LinqToLdap
         /// <returns></returns>
         public IDirectoryAttributes GetByDN(string distinguishedName, params string[] attributes)
         {
-            if (_disposed) throw new ObjectDisposedException(GetType().FullName);
+            ObjectDisposedException.ThrowIf(_disposed, this);
             return _connection.GetByDN(distinguishedName, Logger, attributes);
         }
 
@@ -343,7 +345,7 @@ namespace LinqToLdap
         {
             try
             {
-                if (_disposed) throw new ObjectDisposedException(GetType().FullName);
+                ObjectDisposedException.ThrowIf(_disposed, this);
                 var mapping = _configuration.Mapper.Map<T>();
 
                 var request = new SearchRequest { DistinguishedName = distinguishedName, Scope = SearchScope.Base };
@@ -516,8 +518,8 @@ namespace LinqToLdap
         {
             try
             {
-                if (_disposed) throw new ObjectDisposedException(GetType().FullName);
-                if (entry == null) throw new ArgumentNullException(nameof(entry));
+                ObjectDisposedException.ThrowIf(_disposed, this);
+                ArgumentNullException.ThrowIfNull(entry, nameof(entry));
                 var objectMapping = _configuration.Mapper.GetMapping(entry.GetType());
                 if (objectMapping == null) throw new MappingException("Cannot add an unmapped class.");
 
@@ -595,7 +597,7 @@ namespace LinqToLdap
         /// <exception cref="ObjectDisposedException">Thrown if this instance has been disposed.</exception>
         public void AddEntry(IDirectoryAttributes entry, DirectoryControl[] controls = null)
         {
-            if (_disposed) throw new ObjectDisposedException(GetType().FullName);
+            ObjectDisposedException.ThrowIf(_disposed, this);
 
             _connection.Add(entry, Logger, controls, _configuration.GetListeners<IAddEventListener>());
         }
@@ -613,7 +615,7 @@ namespace LinqToLdap
         /// <exception cref="ObjectDisposedException">Thrown if this instance has been disposed.</exception>
         public IDirectoryAttributes AddAndGetEntry(IDirectoryAttributes entry, DirectoryControl[] controls = null)
         {
-            if (_disposed) throw new ObjectDisposedException(GetType().FullName);
+            ObjectDisposedException.ThrowIf(_disposed, this);
 
             return _connection.AddAndGet(entry, Logger, controls, _configuration.GetListeners<IAddEventListener>());
         }
@@ -628,7 +630,7 @@ namespace LinqToLdap
         /// <exception cref="ObjectDisposedException">Thrown if this instance has been disposed.</exception>
         public void Delete(string distinguishedName, params DirectoryControl[] controls)
         {
-            if (_disposed) throw new ObjectDisposedException(GetType().FullName);
+            ObjectDisposedException.ThrowIf(_disposed, this);
 
             _connection.Delete(distinguishedName, Logger, controls, _configuration.GetListeners<IDeleteEventListener>());
         }
@@ -704,7 +706,7 @@ namespace LinqToLdap
         /// <exception cref="ObjectDisposedException">Thrown if this instance has been disposed.</exception>
         public IDirectoryAttributes UpdateAndGetEntry(IDirectoryAttributes entry, DirectoryControl[] controls = null)
         {
-            if (_disposed) throw new ObjectDisposedException(GetType().FullName);
+            ObjectDisposedException.ThrowIf(_disposed, this);
 
             return _connection.UpdateAndGet(entry, Logger, controls, _configuration.GetListeners<IUpdateEventListener>());
         }
@@ -722,7 +724,7 @@ namespace LinqToLdap
         /// <exception cref="ObjectDisposedException">Thrown if this instance has been disposed.</exception>
         public void UpdateEntry(IDirectoryAttributes entry, DirectoryControl[] controls = null)
         {
-            if (_disposed) throw new ObjectDisposedException(GetType().FullName);
+            ObjectDisposedException.ThrowIf(_disposed, this);
 
             _connection.Update(entry, Logger, controls, _configuration.GetListeners<IUpdateEventListener>());
         }
@@ -739,9 +741,8 @@ namespace LinqToLdap
         /// <exception cref="ObjectDisposedException">Thrown if this instance has been disposed.</exception>
         public void AddAttribute(string distinguishedName, string attributeName, object value = null, DirectoryControl[] controls = null)
         {
-            if (_disposed) throw new ObjectDisposedException(GetType().FullName);
-            if (distinguishedName.IsNullOrEmpty())
-                throw new ArgumentNullException("distinguishedName");
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            ArgumentException.ThrowIfNullOrWhiteSpace(distinguishedName, nameof(distinguishedName));
 
             var attributes = new DirectoryAttributes(distinguishedName);
 
@@ -763,9 +764,8 @@ namespace LinqToLdap
         /// <exception cref="ObjectDisposedException">Thrown if this instance has been disposed.</exception>
         public void DeleteAttribute(string distinguishedName, string attributeName, object value = null, DirectoryControl[] controls = null)
         {
-            if (_disposed) throw new ObjectDisposedException(GetType().FullName);
-            if (distinguishedName.IsNullOrEmpty())
-                throw new ArgumentNullException("distinguishedName");
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            ArgumentException.ThrowIfNullOrWhiteSpace(distinguishedName, nameof(distinguishedName));
 
             var attributes = new DirectoryAttributes(distinguishedName);
 
@@ -792,7 +792,7 @@ namespace LinqToLdap
         /// <exception cref="ObjectDisposedException">Thrown if this instance has been disposed.</exception>
         public string MoveEntry(string currentDistinguishedName, string newNamingContext, bool? deleteOldRDN = null, params DirectoryControl[] controls)
         {
-            if (_disposed) throw new ObjectDisposedException(GetType().FullName);
+            ObjectDisposedException.ThrowIf(_disposed, this);
             return _connection.MoveEntry(currentDistinguishedName, newNamingContext, Logger, deleteOldRDN, controls);
         }
 
@@ -815,7 +815,7 @@ namespace LinqToLdap
         /// <exception cref="ObjectDisposedException">Thrown if this instance has been disposed.</exception>
         public string RenameEntry(string currentDistinguishedName, string newName, bool? deleteOldRDN = null, params DirectoryControl[] controls)
         {
-            if (_disposed) throw new ObjectDisposedException(GetType().FullName);
+            ObjectDisposedException.ThrowIf(_disposed, this);
             return _connection.RenameEntry(currentDistinguishedName, newName, Logger, deleteOldRDN, controls);
         }
 
@@ -833,7 +833,7 @@ namespace LinqToLdap
         /// <returns></returns>
         public IList<TValue> RetrieveRanges<TValue>(string distinguishedName, string attributeName, int start = 0)
         {
-            if (_disposed) throw new ObjectDisposedException(GetType().FullName);
+            ObjectDisposedException.ThrowIf(_disposed, this);
 
             return _connection.RetrieveRanges<TValue>(distinguishedName, attributeName, start, Logger);
         }
@@ -845,7 +845,7 @@ namespace LinqToLdap
         /// <returns></returns>
         public DirectoryResponse SendRequest(DirectoryRequest request)
         {
-            if (_disposed) throw new ObjectDisposedException(GetType().FullName);
+            ObjectDisposedException.ThrowIf(_disposed, this);
 
             return _connection.SendRequest(request);
         }
@@ -855,8 +855,8 @@ namespace LinqToLdap
         {
             try
             {
-                if (_disposed) throw new ObjectDisposedException(GetType().FullName);
-                if (entry == null) throw new ArgumentNullException(nameof(entry));
+                ObjectDisposedException.ThrowIf(_disposed, this);
+                ArgumentNullException.ThrowIfNull(entry, nameof(entry));
 
                 var objectMapping = _configuration.Mapper.GetMapping(entry.GetType());
                 if (objectMapping == null) throw new MappingException("Cannot update an unmapped class.");
@@ -924,15 +924,14 @@ namespace LinqToLdap
 
         internal static string GetDistinguishedName<T>(string distinguishedName, IObjectMapping objectMapping, T entry)
         {
-            if (distinguishedName.IsNullOrEmpty())
+            if (string.IsNullOrWhiteSpace(distinguishedName))
             {
                 var distinguishedNameMapping = objectMapping.GetDistinguishedNameMapping();
-
                 if (distinguishedNameMapping == null) throw new MappingException("Distinguished name must be mapped.");
 
                 distinguishedName = distinguishedNameMapping.GetValue(entry) as string;
 
-                if (distinguishedName.IsNullOrEmpty()) throw new ArgumentException("The distinguished name cannot be null or empty.");
+                ArgumentException.ThrowIfNullOrWhiteSpace(distinguishedName, "The distinguished name cannot be null or empty.");
             }
 
             return distinguishedName;
@@ -954,7 +953,7 @@ namespace LinqToLdap
         public async Task AddEntryAsync(IDirectoryAttributes entry, DirectoryControl[] controls = null,
             PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default)
         {
-            if (_disposed) throw new ObjectDisposedException(GetType().FullName);
+            ObjectDisposedException.ThrowIf(_disposed, this);
 
             await _connection.AddAsync(entry, Logger, controls, _configuration.GetListeners<IAddEventListener>(), resultProcessing, cancellationToken).ConfigureAwait(false);
         }
@@ -975,7 +974,7 @@ namespace LinqToLdap
         public async Task<IDirectoryAttributes> AddAndGetEntryAsync(IDirectoryAttributes entry, DirectoryControl[] controls = null,
             PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default)
         {
-            if (_disposed) throw new ObjectDisposedException(GetType().FullName);
+            ObjectDisposedException.ThrowIf(_disposed, this);
 
             return await _connection.AddAndGetAsync(entry, Logger, controls, _configuration.GetListeners<IAddEventListener>(), resultProcessing, cancellationToken).ConfigureAwait(false);
         }
@@ -994,7 +993,7 @@ namespace LinqToLdap
         public async Task DeleteAsync(string distinguishedName, DirectoryControl[] controls = null,
             PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default)
         {
-            if (_disposed) throw new ObjectDisposedException(GetType().FullName);
+            ObjectDisposedException.ThrowIf(_disposed, this);
 
             await _connection.DeleteAsync(distinguishedName, Logger, controls, _configuration.GetListeners<IDeleteEventListener>(), resultProcessing, cancellationToken).ConfigureAwait(false);
         }
@@ -1079,7 +1078,7 @@ namespace LinqToLdap
         public async Task<IDirectoryAttributes> UpdateAndGetEntryAsync(IDirectoryAttributes entry, DirectoryControl[] controls = null,
             PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default)
         {
-            if (_disposed) throw new ObjectDisposedException(GetType().FullName);
+            ObjectDisposedException.ThrowIf(_disposed, this);
             return await _connection.UpdateAndGetAsync(entry, Logger, controls, _configuration.GetListeners<IUpdateEventListener>(), resultProcessing, cancellationToken).ConfigureAwait(false);
         }
 
@@ -1099,7 +1098,7 @@ namespace LinqToLdap
         public async Task UpdateEntryAsync(IDirectoryAttributes entry, DirectoryControl[] controls = null,
             PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default)
         {
-            if (_disposed) throw new ObjectDisposedException(GetType().FullName);
+            ObjectDisposedException.ThrowIf(_disposed, this);
 
             await _connection.UpdateAsync(entry, Logger, controls, _configuration.GetListeners<IUpdateEventListener>(), resultProcessing, cancellationToken).ConfigureAwait(false);
         }
@@ -1119,9 +1118,8 @@ namespace LinqToLdap
         public async Task AddAttributeAsync(string distinguishedName, string attributeName, object value = null, DirectoryControl[] controls = null,
             PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default)
         {
-            if (_disposed) throw new ObjectDisposedException(GetType().FullName);
-            if (distinguishedName.IsNullOrEmpty())
-                throw new ArgumentNullException("distinguishedName");
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            ArgumentException.ThrowIfNullOrWhiteSpace(distinguishedName, nameof(distinguishedName));
 
             var attributes = new DirectoryAttributes(distinguishedName);
 
@@ -1146,9 +1144,8 @@ namespace LinqToLdap
         public async Task DeleteAttributeAsync(string distinguishedName, string attributeName, object value = null, DirectoryControl[] controls = null,
             PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default)
         {
-            if (_disposed) throw new ObjectDisposedException(GetType().FullName);
-            if (distinguishedName.IsNullOrEmpty())
-                throw new ArgumentNullException("distinguishedName");
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            ArgumentException.ThrowIfNullOrWhiteSpace(distinguishedName, nameof(distinguishedName));
 
             var attributes = new DirectoryAttributes(distinguishedName);
 
@@ -1178,7 +1175,7 @@ namespace LinqToLdap
         public async Task<string> MoveEntryAsync(string currentDistinguishedName, string newNamingContext, bool? deleteOldRDN = null,
             DirectoryControl[] controls = null, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default)
         {
-            if (_disposed) throw new ObjectDisposedException(GetType().FullName);
+            ObjectDisposedException.ThrowIf(_disposed, this);
             return await _connection.MoveEntryAsync(currentDistinguishedName, newNamingContext, Logger, deleteOldRDN, controls, resultProcessing, cancellationToken).ConfigureAwait(false);
         }
 
@@ -1204,7 +1201,7 @@ namespace LinqToLdap
         public async Task<string> RenameEntryAsync(string currentDistinguishedName, string newName, bool? deleteOldRDN = null, DirectoryControl[] controls = null,
             PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default)
         {
-            if (_disposed) throw new ObjectDisposedException(GetType().FullName);
+            ObjectDisposedException.ThrowIf(_disposed, this);
             return await _connection.RenameEntryAsync(currentDistinguishedName, newName, Logger, deleteOldRDN, controls, resultProcessing, cancellationToken).ConfigureAwait(false);
         }
 
@@ -1225,7 +1222,7 @@ namespace LinqToLdap
         public async Task<IList<TValue>> RetrieveRangesAsync<TValue>(string distinguishedName, string attributeName, int start = 0,
             PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default)
         {
-            if (_disposed) throw new ObjectDisposedException(GetType().FullName);
+            ObjectDisposedException.ThrowIf(_disposed, this);
 
             return await _connection.RetrieveRangesAsync<TValue>(distinguishedName, attributeName, start, Logger, resultProcessing, cancellationToken).ConfigureAwait(false);
         }
@@ -1239,7 +1236,7 @@ namespace LinqToLdap
         /// <returns></returns>
         public async Task<DirectoryResponse> SendRequestAsync(DirectoryRequest request, PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default)
         {
-            if (_disposed) throw new ObjectDisposedException(GetType().FullName);
+            ObjectDisposedException.ThrowIf(_disposed, this);
 
             return await Task.Run(() => _connection.SendRequest(request) as DirectoryResponse, cancellationToken).ConfigureAwait(false);
         }
@@ -1249,8 +1246,8 @@ namespace LinqToLdap
         {
             try
             {
-                if (_disposed) throw new ObjectDisposedException(GetType().FullName);
-                if (entry == null) throw new ArgumentNullException(nameof(entry));
+                ObjectDisposedException.ThrowIf(_disposed, this);
+                ArgumentNullException.ThrowIfNull(entry, nameof(entry));
 
                 cancellationToken.ThrowIfCancellationRequested();
 
@@ -1326,8 +1323,8 @@ namespace LinqToLdap
         {
             try
             {
-                if (_disposed) throw new ObjectDisposedException(GetType().FullName);
-                if (entry == null) throw new ArgumentNullException(nameof(entry));
+                ObjectDisposedException.ThrowIf(_disposed, this);
+                ArgumentNullException.ThrowIfNull(entry, nameof(entry));
 
                 cancellationToken.ThrowIfCancellationRequested();
 

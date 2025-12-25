@@ -449,7 +449,7 @@ namespace LinqToLdap.Tests.Collections
         {
             Executing.This(() => _attributes.AddModification(new DirectoryAttributeModification()))
                      .Should().Throw<ArgumentException>().And.Exception.Message
-                     .Should().Be.EqualTo("The modification must have a name.");
+                     .Should().Be.EqualTo("The value cannot be an empty string or composed entirely of whitespace. (Parameter 'The modification must have a name.')");
         }
 
         [TestMethod]

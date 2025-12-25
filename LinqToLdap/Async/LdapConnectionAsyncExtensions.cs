@@ -28,8 +28,8 @@ namespace LinqToLdap.Async
             CancellationToken cancellationToken = default)
             where TResponse : DirectoryResponse
         {
-            if (connection == null) throw new ArgumentNullException(nameof(connection));
-            if (request == null) throw new ArgumentNullException(nameof(request));
+            ArgumentNullException.ThrowIfNull(connection, nameof(connection));
+            ArgumentNullException.ThrowIfNull(request, nameof(request));
 
             if (cancellationToken.IsCancellationRequested)
             {
@@ -103,11 +103,12 @@ namespace LinqToLdap.Async
             string distinguishedName = null;
             try
             {
-                if (connection == null) throw new ArgumentNullException(nameof(connection));
-                if (entry == null) throw new ArgumentNullException(nameof(entry));
+                ArgumentNullException.ThrowIfNull(connection, nameof(connection));
+                ArgumentNullException.ThrowIfNull(entry, nameof(entry));
+
                 distinguishedName = entry.DistinguishedName;
 
-                if (distinguishedName.IsNullOrEmpty()) throw new ArgumentException("entry.DistinguishedName is invalid.");
+                ArgumentException.ThrowIfNullOrWhiteSpace(distinguishedName, nameof(distinguishedName));
 
                 var request = new AddRequest(distinguishedName, entry.GetChangedAttributes().Where(da => da.Count > 0).ToArray());
                 if (controls != null)
@@ -190,9 +191,8 @@ namespace LinqToLdap.Async
         {
             try
             {
-                if (connection == null) throw new ArgumentNullException(nameof(connection));
-                if (distinguishedName.IsNullOrEmpty())
-                    throw new ArgumentNullException(nameof(distinguishedName));
+                ArgumentNullException.ThrowIfNull(connection, nameof(connection));
+                ArgumentException.ThrowIfNullOrWhiteSpace(distinguishedName, nameof(distinguishedName));
 
                 var request = new DeleteRequest(distinguishedName);
                 if (controls != null)
@@ -254,11 +254,12 @@ namespace LinqToLdap.Async
             string distinguishedName = null;
             try
             {
-                if (connection == null) throw new ArgumentNullException(nameof(connection));
-                if (entry == null) throw new ArgumentNullException(nameof(entry));
+                ArgumentNullException.ThrowIfNull(connection, nameof(connection));
+                ArgumentNullException.ThrowIfNull(entry, nameof(entry));
 
                 distinguishedName = entry.DistinguishedName;
-                if (distinguishedName.IsNullOrEmpty()) throw new ArgumentException("entry.DistinguishedName is invalid.");
+
+                ArgumentException.ThrowIfNullOrWhiteSpace(distinguishedName, nameof(distinguishedName));
 
                 var changes = entry.GetChangedAttributes();
 
@@ -348,7 +349,8 @@ namespace LinqToLdap.Async
         {
             try
             {
-                if (connection == null) throw new ArgumentNullException(nameof(connection));
+                ArgumentNullException.ThrowIfNull(connection, nameof(connection));
+
                 using (var provider = new DirectoryQueryProvider(
                     connection, SearchScope.Base, new ServerObjectMapping(), false)
                 { Log = log, IsDynamic = true })
@@ -391,7 +393,7 @@ namespace LinqToLdap.Async
         {
             try
             {
-                if (connection == null) throw new ArgumentNullException(nameof(connection));
+                ArgumentNullException.ThrowIfNull(connection, nameof(connection));
 
                 var request = new SearchRequest { DistinguishedName = distinguishedName, Scope = SearchScope.Base };
 
@@ -441,13 +443,10 @@ namespace LinqToLdap.Async
         {
             try
             {
-                if (connection == null) throw new ArgumentNullException(nameof(connection));
+                ArgumentNullException.ThrowIfNull(connection, nameof(connection));
 
-                if (currentDistinguishedName.IsNullOrEmpty())
-                    throw new ArgumentNullException(nameof(currentDistinguishedName));
-
-                if (newNamingContext.IsNullOrEmpty())
-                    throw new ArgumentNullException(nameof(newNamingContext));
+                ArgumentException.ThrowIfNullOrWhiteSpace(currentDistinguishedName, nameof(currentDistinguishedName));
+                ArgumentException.ThrowIfNullOrWhiteSpace(newNamingContext, nameof(newNamingContext));
 
                 var name = DnParser.GetEntryName(currentDistinguishedName);
 
@@ -490,13 +489,10 @@ namespace LinqToLdap.Async
         {
             try
             {
-                if (connection == null) throw new ArgumentNullException(nameof(connection));
+                ArgumentNullException.ThrowIfNull(connection, nameof(connection));
 
-                if (currentDistinguishedName.IsNullOrEmpty())
-                    throw new ArgumentNullException(nameof(currentDistinguishedName));
-
-                if (newName.IsNullOrEmpty())
-                    throw new ArgumentNullException(nameof(newName));
+                ArgumentException.ThrowIfNullOrWhiteSpace(currentDistinguishedName, nameof(currentDistinguishedName));
+                ArgumentException.ThrowIfNullOrWhiteSpace(newName, nameof(newName));
 
                 newName = DnParser.FormatName(newName, currentDistinguishedName);
                 var container = DnParser.GetEntryContainer(currentDistinguishedName);
@@ -538,10 +534,10 @@ namespace LinqToLdap.Async
             string currentRange = null;
             try
             {
-                if (connection == null) throw new ArgumentNullException(nameof(connection));
+                ArgumentNullException.ThrowIfNull(connection, nameof(connection));
 
-                if (distinguishedName.IsNullOrEmpty()) throw new ArgumentNullException(nameof(distinguishedName));
-                if (attributeName.IsNullOrEmpty()) throw new ArgumentNullException(nameof(attributeName));
+                ArgumentException.ThrowIfNullOrWhiteSpace(distinguishedName, nameof(distinguishedName));
+                ArgumentException.ThrowIfNullOrWhiteSpace(attributeName, nameof(attributeName));
                 //Code pulled from http://dunnry.com/blog/2007/08/10/RangeRetrievalUsingSystemDirectoryServicesProtocols.aspx
 
                 var list = new List<TValue>();

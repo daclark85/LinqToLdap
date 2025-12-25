@@ -1372,8 +1372,8 @@ namespace LinqToLdap.Tests
 
             //assert
             Executing.This(() => DirectoryContext.GetDistinguishedName(null, objectMapping.Object, obj))
-                .Should().Throw<ArgumentException>().And.Exception.Message
-                .Should().Be.EqualTo("The distinguished name cannot be null or empty.");
+                .Should().Throw<ArgumentNullException>().And.Exception.Message
+                .Should().Be.EqualTo("Value cannot be null. (Parameter 'The distinguished name cannot be null or empty.')");
         }
 
         #endregion GetDistinguishedName Tests

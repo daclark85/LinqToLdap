@@ -32,7 +32,8 @@ namespace LinqToLdap.Collections
         /// <param name="entry">The <see cref="SearchResultEntry"/> to wrap.</param>
         internal DirectoryAttributes(SearchResultEntry entry)
         {
-            _entry = entry ?? throw new ArgumentNullException(nameof(entry));
+            ArgumentNullException.ThrowIfNull(entry, nameof(entry));
+            _entry = entry;
         }
 
         /// <summary>
@@ -85,9 +86,9 @@ namespace LinqToLdap.Collections
         /// <exception cref="InvalidOperationException">Thrown if a modification with the same name and operation has already been added.</exception>
         public IDirectoryAttributes AddModification(DirectoryAttributeModification modification)
         {
-            if (modification == null) throw new ArgumentNullException(nameof(modification));
+            ArgumentNullException.ThrowIfNull(modification);
             string name = modification.Name;
-            if (name.IsNullOrEmpty()) throw new ArgumentException("The modification must have a name.");
+            ArgumentException.ThrowIfNullOrWhiteSpace(name, "The modification must have a name.");
 
             if (name.Equals("distinguishedname", StringComparison.OrdinalIgnoreCase) || name.Equals("entrydn", StringComparison.OrdinalIgnoreCase))
                 throw new ArgumentException("Cannot change the distinguished name. Please use MoveEntry or RenameEntry.");
@@ -163,7 +164,7 @@ namespace LinqToLdap.Collections
         /// <returns></returns>
         public DirectoryAttribute Get(string attribute)
         {
-            if (attribute.IsNullOrEmpty()) throw new ArgumentNullException(nameof(attribute));
+            ArgumentException.ThrowIfNullOrWhiteSpace(attribute, nameof(attribute));
             return _entry?.Attributes[attribute];
         }
 

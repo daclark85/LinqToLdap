@@ -83,7 +83,7 @@ namespace LinqToLdap.Tests.Mapping
         {
             //assert
             Executing.This(() => new LdapConfiguration().AddMappingsFrom(""))
-                .Should().Throw<ArgumentNullException>();
+                .Should().Throw<ArgumentException>();
         }
     }
 }

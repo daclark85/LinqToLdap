@@ -75,8 +75,7 @@ namespace LinqToLdap.Mapping
         /// </exception>
         public void AddMappingsFrom(string assemblyName)
         {
-            if (assemblyName.IsNullOrEmpty())
-                throw new ArgumentNullException(nameof(assemblyName));
+            ArgumentException.ThrowIfNullOrWhiteSpace(assemblyName, nameof(assemblyName));
 
             assemblyName = assemblyName.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)
                                 ? assemblyName
@@ -96,7 +95,7 @@ namespace LinqToLdap.Mapping
         /// </exception>
         public void AddMappingsFrom(Assembly assembly)
         {
-            if (assembly == null) throw new ArgumentNullException(nameof(assembly));
+            ArgumentNullException.ThrowIfNull(assembly, nameof(assembly));
 
             foreach (var type in assembly.GetTypes().Where(t => !t.IsInterface))
             {
@@ -152,7 +151,7 @@ namespace LinqToLdap.Mapping
         /// <returns></returns>
         public IObjectMapping Map(IClassMap classMap, string namingContext = null, IEnumerable<string> objectClasses = null, bool includeObjectClasses = true, string objectCategory = null, bool includeObjectCategory = true, SecurityMasks includeSecurityMasks = SecurityMasks.None)
         {
-            if (classMap == null) throw new ArgumentNullException(nameof(classMap));
+            ArgumentNullException.ThrowIfNull(classMap, nameof(classMap));
 
             return _mappings.GetOrAdd(classMap.Type, t =>
             {

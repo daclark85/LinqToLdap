@@ -16,7 +16,8 @@ namespace LinqToLdap.Mapping.PropertyMappingBuilders
 
         public CustomPropertyMappingBuilder(PropertyInfo propertyInfo)
         {
-            PropertyInfo = propertyInfo ?? throw new ArgumentNullException("propertyInfo");
+            ArgumentNullException.ThrowIfNull(propertyInfo, nameof(propertyInfo));
+            PropertyInfo = propertyInfo;
         }
 
         public bool IsDistinguishedName { get { return false; } }
@@ -53,20 +54,21 @@ namespace LinqToLdap.Mapping.PropertyMappingBuilders
 
         public ICustomPropertyMapper<T, TProperty> ConvertFromDirectoryUsing(Func<DirectoryAttribute, TProperty> converter)
         {
-            _convertFrom = converter ?? throw new ArgumentNullException("converter");
+            ArgumentNullException.ThrowIfNull(converter, nameof(converter));
+            _convertFrom = converter;
             return this;
         }
 
         public ICustomPropertyMapper<T, TProperty> ConvertToFilterUsing(Func<TProperty, string> converter)
         {
-            if (converter == null) throw new ArgumentNullException("converter");
+            ArgumentNullException.ThrowIfNull(converter, nameof(converter));
             _convertToFilter = converter;
             return this;
         }
 
         public ICustomPropertyMapper<T, TProperty> ConvertToDirectoryUsing(Func<TProperty, byte[]> converter)
         {
-            if (converter == null) throw new ArgumentNullException("converter");
+            ArgumentNullException.ThrowIfNull(converter, nameof(converter));
             Expression<Func<TProperty, object>> e = v => converter(v);
             _convertTo = e.Compile();
             return this;
@@ -74,7 +76,7 @@ namespace LinqToLdap.Mapping.PropertyMappingBuilders
 
         public ICustomPropertyMapper<T, TProperty> ConvertToDirectoryUsing(Func<TProperty, byte[][]> converter)
         {
-            if (converter == null) throw new ArgumentNullException("converter");
+            ArgumentNullException.ThrowIfNull(converter, nameof(converter));
             Expression<Func<TProperty, object>> e = v => converter(v);
             _convertTo = e.Compile();
             return this;
@@ -82,7 +84,7 @@ namespace LinqToLdap.Mapping.PropertyMappingBuilders
 
         public ICustomPropertyMapper<T, TProperty> ConvertToDirectoryUsing(Func<TProperty, string> converter)
         {
-            if (converter == null) throw new ArgumentNullException("converter");
+            ArgumentNullException.ThrowIfNull(converter, nameof(converter));
             Expression<Func<TProperty, object>> e = v => converter(v);
             _convertTo = e.Compile();
             return this;
@@ -90,7 +92,7 @@ namespace LinqToLdap.Mapping.PropertyMappingBuilders
 
         public ICustomPropertyMapper<T, TProperty> ConvertToDirectoryUsing(Func<TProperty, string[]> converter)
         {
-            if (converter == null) throw new ArgumentNullException("converter");
+            ArgumentNullException.ThrowIfNull(converter, nameof(converter));
             Expression<Func<TProperty, object>> e = v => converter(v);
             _convertTo = e.Compile();
 
@@ -99,7 +101,8 @@ namespace LinqToLdap.Mapping.PropertyMappingBuilders
 
         public ICustomPropertyMapper<T, TProperty> CompareChangesUsing(Func<TProperty, TProperty, bool> comparer)
         {
-            _isEqual = comparer ?? throw new ArgumentNullException("comparer");
+            ArgumentNullException.ThrowIfNull(comparer, nameof(comparer));
+            _isEqual = comparer;
 
             return this;
         }

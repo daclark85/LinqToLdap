@@ -18,7 +18,8 @@ namespace LinqToLdap.Mapping.PropertyMappingBuilders
 
         public DateTimePropertyMappingBuilder(PropertyInfo propertyInfo)
         {
-            PropertyInfo = propertyInfo ?? throw new ArgumentNullException("propertyInfo");
+            ArgumentNullException.ThrowIfNull(propertyInfo, nameof(propertyInfo));
+            PropertyInfo = propertyInfo;
 
             IsDistinguishedName = false;
         }
@@ -89,8 +90,7 @@ namespace LinqToLdap.Mapping.PropertyMappingBuilders
 
         IDirectoryToConversion<IDateTimePropertyMappingBuilder<T, TProperty>, TProperty> IDirectoryValueConversionMapper<IDateTimePropertyMappingBuilder<T, TProperty>, TProperty>.DirectoryValue(string directoryValue)
         {
-            if (string.IsNullOrEmpty(directoryValue))
-                throw new ArgumentException("directoryValue cannot be null or empty.  Use DirectoryValueNotSetOrEmpty.");
+            ArgumentException.ThrowIfNullOrEmpty(directoryValue, "directoryValue cannot be null or empty. Use DirectoryValueNotSetOrEmpty.");
 
             if (_directoryMappings == null) _directoryMappings = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
 
