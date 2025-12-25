@@ -145,15 +145,11 @@ namespace LinqToLdap.Tests
             //prepare
             var obj = new object();
             object[] parameters;
-#if (!NET35 && !NET40 && !NET45)
+
             parameters = new object[] { "", new System.DirectoryServices.Protocols.DirectoryControl[0], System.DirectoryServices.Protocols.ResultCode.Success, "", new System.Uri[0] };
-#else
-            parameters = new object[] { new XmlDocument() };
-#endif
+
             var response = typeof(ModifyResponse).Create<ModifyResponse>(parameters);
-#if (NET35 || NET40 || NET45)
-            response.SetFieldValue("result", ResultCode.Success);
-#endif
+
             var connection = new MockLdapConnection(new Dictionary<Type, DirectoryResponse> { { typeof(ModifyRequest), response } });
             var configuration = new Mock<ILdapConfiguration>();
             var mapper = new Mock<IDirectoryMapper>();
@@ -647,15 +643,11 @@ namespace LinqToLdap.Tests
             var preUpdateListener = new Mock<IPreUpdateEventListener>();
             var postUpdateListener = new Mock<IPostUpdateEventListener>();
             object[] parameters;
-#if (!NET35 && !NET40 && !NET45)
+
             parameters = new object[] { "", new System.DirectoryServices.Protocols.DirectoryControl[0], System.DirectoryServices.Protocols.ResultCode.Success, "", new System.Uri[0] };
-#else
-            parameters = new object[] { new XmlDocument() };
-#endif
+
             var response = typeof(ModifyResponse).Create<ModifyResponse>(parameters);
-#if (NET35 || NET40 || NET45)
-            response.SetFieldValue("result", ResultCode.Success);
-#endif
+
             var connection = new MockLdapConnection(new Dictionary<Type, DirectoryResponse> { { typeof(ModifyRequest), response } });
 
             var configuration = new Mock<ILdapConfiguration>();
@@ -842,15 +834,11 @@ namespace LinqToLdap.Tests
             //prepare
             var xml = new XmlDocument();
             object[] parameters;
-#if (!NET35 && !NET40 && !NET45)
+
             parameters = new object[] { "", new System.DirectoryServices.Protocols.DirectoryControl[0], System.DirectoryServices.Protocols.ResultCode.Success, "", new System.Uri[0] };
-#else
-            parameters = new object[] { new XmlDocument() };
-#endif
+
             var addResponse = typeof(AddResponse).Create<AddResponse>(parameters);
-#if (NET35 || NET40 || NET45)
-            addResponse.SetFieldValue("result", ResultCode.Success);
-#endif
+
             var connection = new MockLdapConnection(new Dictionary<Type, DirectoryResponse> { { typeof(AddRequest), addResponse } });
             var configuration = new Mock<ILdapConfiguration>();
             var preAdd = new Mock<IPreAddEventListener>();
@@ -1090,15 +1078,11 @@ namespace LinqToLdap.Tests
             var obj = new object();
             var xml = new XmlDocument();
             object[] parameters;
-#if (!NET35 && !NET40 && !NET45)
+
             parameters = new object[] { "", new System.DirectoryServices.Protocols.DirectoryControl[0], System.DirectoryServices.Protocols.ResultCode.Success, "", new System.Uri[0] };
-#else
-            parameters = new object[] { new XmlDocument() };
-#endif
+
             var addResponse = typeof(AddResponse).Create<AddResponse>(parameters);
-#if (NET35 || NET40 || NET45)
-            addResponse.SetFieldValue("result", ResultCode.Success);
-#endif
+
             var connection = new MockLdapConnection(new Dictionary<Type, DirectoryResponse> { { typeof(AddRequest), addResponse } });
             var configuration = new Mock<ILdapConfiguration>();
             var mapper = new Mock<IDirectoryMapper>();
@@ -1437,15 +1421,11 @@ namespace LinqToLdap.Tests
             //prepare
             var xml = new XmlDocument();
             object[] parameters;
-#if (!NET35 && !NET40 && !NET45)
+
             parameters = new object[] { "", new System.DirectoryServices.Protocols.DirectoryControl[0], System.DirectoryServices.Protocols.ResultCode.Success, "", new System.Uri[0] };
-#else
-            parameters = new object[] { new XmlDocument() };
-#endif
+
             var deleteResponse = typeof(DeleteResponse).Create<DeleteResponse>(parameters);
-#if (NET35 || NET40 || NET45)
-            deleteResponse.SetFieldValue("result", ResultCode.Success);
-#endif
+
             var connection = new MockLdapConnection(new Dictionary<Type, DirectoryResponse> { { typeof(DeleteRequest), deleteResponse } });
             var configuration = new Mock<ILdapConfiguration>();
             var preAdd = new Mock<IPreDeleteEventListener>();
@@ -1979,32 +1959,6 @@ namespace LinqToLdap.Tests
             //assert
             connection.TimesDisposed.Should().Be.EqualTo(0);
         }
-
-#if (NET35 || NET40 || NET45)
-
-        [TestMethod]
-        public void Finalizer_Returns_Connection_To_Pool()
-        {
-            //prepare
-            var connection = new MockLdapConnection();
-            var configuration = new Mock<ILdapConfiguration>();
-            var connectionFactory = new Mock<IPooledLdapConnectionFactory>();
-            configuration.Setup(x => x.ConnectionFactory)
-                .Returns(connectionFactory.Object);
-            connectionFactory.Setup(x => x.GetConnection())
-                .Returns(connection);
-
-            //act
-            new DirectoryContext(configuration.Object);
-
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
-
-            //assert
-            connectionFactory.Verify(x => x.ReleaseConnection(connection), Times.Once());
-        }
-
-#endif
 
         [TestMethod]
         public void Finalizer_Does_Not_Release_Connection_For_Non_Pooled_Factory()

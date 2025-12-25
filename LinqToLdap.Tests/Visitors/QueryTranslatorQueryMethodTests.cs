@@ -82,13 +82,9 @@ namespace LinqToLdap.Tests.Visitors
         [TestCleanup]
         public void TearDown()
         {
-#if NET35
-            Console.WriteLine(_mockFacotry.Filter + Environment.NewLine +
-                ((_mockFacotry.Options != null && _mockFacotry.Options.AttributesToLoad != null) ? "Attributes: " + string.Join(", ", _mockFacotry.Options.AttributesToLoad.Keys.ToArray()) : ""));
-#else
             Console.WriteLine(_mockFacotry.Filter + Environment.NewLine +
                 ((_mockFacotry.Options != null && _mockFacotry.Options.AttributesToLoad != null) ? "Attributes: " + string.Join(", ", _mockFacotry.Options.AttributesToLoad.Keys) : ""));
-#endif
+
         }
 
         [TestMethod]

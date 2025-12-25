@@ -125,17 +125,12 @@ namespace LinqToLdap.Tests
             //assert
             connection.SessionOptions.ProtocolVersion.Should().Be.EqualTo(3);
             connection.SessionOptions.SecureSocketLayer.Should().Be.False();
-#if (NET35 || NET40 || NET45)
-            connection.FieldValueEx<NetworkCredential>("directoryCredential").Should().Not.Be.Null();
-            connection.FieldValueEx<LdapDirectoryIdentifier>("directoryIdentifier").Connectionless.Should().Be.True();
-            connection.FieldValueEx<LdapDirectoryIdentifier>("directoryIdentifier").FullyQualifiedDnsHostName.Should().Be.False();
-            connection.FieldValueEx<LdapDirectoryIdentifier>("directoryIdentifier").PortNumber.Should().Be.EqualTo(389);
-#else
+
             connection.FieldValueEx<NetworkCredential>("_directoryCredential").Should().Not.Be.Null();
             connection.FieldValueEx<LdapDirectoryIdentifier>("_directoryIdentifier").Connectionless.Should().Be.True();
             connection.FieldValueEx<LdapDirectoryIdentifier>("_directoryIdentifier").FullyQualifiedDnsHostName.Should().Be.False();
             connection.FieldValueEx<LdapDirectoryIdentifier>("_directoryIdentifier").PortNumber.Should().Be.EqualTo(389);
-#endif
+
         }
 
         [TestMethod]
@@ -152,19 +147,12 @@ namespace LinqToLdap.Tests
             //assert
             connection.SessionOptions.ProtocolVersion.Should().Be.EqualTo(2);
             connection.SessionOptions.SecureSocketLayer.Should().Be.False();
-#if (NET35 || NET40 || NET45)
-            connection.FieldValueEx<AuthType>("connectionAuthType").Should().Be.EqualTo(System.DirectoryServices.Protocols.AuthType.Basic);
-            connection.FieldValueEx<NetworkCredential>("directoryCredential").Should().Be.Null();
-            connection.FieldValueEx<LdapDirectoryIdentifier>("directoryIdentifier").Connectionless.Should().Be.True();
-            connection.FieldValueEx<LdapDirectoryIdentifier>("directoryIdentifier").FullyQualifiedDnsHostName.Should().Be.False();
-            connection.FieldValueEx<LdapDirectoryIdentifier>("directoryIdentifier").PortNumber.Should().Be.EqualTo(389);
-#else
+
             connection.AuthType.Should().Be.EqualTo(System.DirectoryServices.Protocols.AuthType.Basic);
             connection.FieldValueEx<NetworkCredential>("_directoryCredential").Should().Be.Null();
             connection.FieldValueEx<LdapDirectoryIdentifier>("_directoryIdentifier").Connectionless.Should().Be.True();
             connection.FieldValueEx<LdapDirectoryIdentifier>("_directoryIdentifier").FullyQualifiedDnsHostName.Should().Be.False();
             connection.FieldValueEx<LdapDirectoryIdentifier>("_directoryIdentifier").PortNumber.Should().Be.EqualTo(389);
-#endif
         }
     }
 }

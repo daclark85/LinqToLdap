@@ -14,11 +14,8 @@ namespace LinqToLdap.Tests.Transformers
     public class ResultTransformerTest
     {
         private Mock<IObjectMapping> _mapping;
-#if (!NET35 && !NET40)
         private System.Collections.ObjectModel.ReadOnlyDictionary<string, string> _properties;
-#else
-        private LinqToLdap.Collections.ReadOnlyDictionary<string, string> _properties;
-#endif
+
 
         private Mock<IPropertyMapping> _property1;
         private Mock<IPropertyMapping> _property2;

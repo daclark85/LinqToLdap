@@ -900,8 +900,6 @@ namespace LinqToLdap.Tests
             _postDeleteNotified.Should().Be.True();
         }
 
-#if !NET35
-
         [TestMethod]
         [TestCategory("Integration")]
         public void Test_Pooledfactory()
@@ -929,8 +927,6 @@ namespace LinqToLdap.Tests
                 }
             });
         }
-
-#endif
 
         private static byte[] GetPasswordData(string password)
         {

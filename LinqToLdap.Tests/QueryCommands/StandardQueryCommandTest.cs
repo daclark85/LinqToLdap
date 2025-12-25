@@ -178,15 +178,11 @@ namespace LinqToLdap.Tests.QueryCommands
                 .Returns(typeof(object));
             var xmlNode = new XmlDocument();
             object[] parameters;
-#if (!NET35 && !NET40 && !NET45)
+
             parameters = new object[] { "", new System.DirectoryServices.Protocols.DirectoryControl[0], System.DirectoryServices.Protocols.ResultCode.Success, "", new System.Uri[0] };
-#else
-            parameters = new object[] { xmlNode };
-#endif
+
             var response = typeof(SearchResponse).Create<SearchResponse>(parameters);
-#if (NET35 || NET40 || NET45)
-            response.SetFieldValue("result", ResultCode.Success);
-#endif
+
             var connection = new MockLdapConnection(new Dictionary<Type, DirectoryResponse> { { typeof(SearchRequest), response } });
             var command = new MockStandardQueryCommand(_options.Object, _mapping.Object)
                 .DisableStandardRequest();
@@ -219,15 +215,11 @@ namespace LinqToLdap.Tests.QueryCommands
                 .Returns(typeof(object));
             var xmlNode = new XmlDocument();
             object[] parameters;
-#if (!NET35 && !NET40 && !NET45)
+
             parameters = new object[] { "", new System.DirectoryServices.Protocols.DirectoryControl[0], System.DirectoryServices.Protocols.ResultCode.Success, "", new System.Uri[0] };
-#else
-            parameters = new object[] { xmlNode };
-#endif
+
             var response = typeof(SearchResponse).Create<SearchResponse>(parameters);
-#if (NET35 || NET40 || NET45)
-            response.SetFieldValue("result", ResultCode.Success);
-#endif
+
             var connection = new MockLdapConnection(new Dictionary<Type, DirectoryResponse> { { typeof(SearchRequest), response } });
             var command = new MockStandardQueryCommand(_options.Object, _mapping.Object)
                 .DisableStandardRequest();

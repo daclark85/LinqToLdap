@@ -46,8 +46,6 @@ namespace LinqToLdap.Tests
             _context.Dispose();
         }
 
-#if !NET35 && !NET40
-
         [TestMethod]
         public void AnyAsync_returns_same_result_as_Any()
         {
@@ -307,6 +305,5 @@ namespace LinqToLdap.Tests
             task.Result.DistinguishedName.Should().Be.EqualTo(PersonInheritanceTest.NamingContext);
         }
 
-#endif
     }
 }

@@ -4,23 +4,7 @@ using LinqToLdap.Mapping.PropertyMappings;
 using LinqToLdap.Tests.TestSupport.ExtensionMethods;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SharpTestsEx;
-
-#if NET35
-            using LinqToLdap.NET35.Tests.Properties;
-#endif
-#if NET40
-            using LinqToLdap.NET40.Tests.Properties;
-#endif
-#if NET45
-
-using LinqToLdap.NET45.Tests.Properties;
-
-#endif
-#if (!NET35 && !NET40 && !NET45)
-
 using LinqToLdap.Tests.Properties;
-
-#endif
 
 namespace LinqToLdap.Tests.Mapping.PropertyMappings
 {

@@ -29,10 +29,6 @@ namespace LinqToLdap.Tests.Mapping
 
             //assert
             connection.AuthType.Should().Be.EqualTo(AuthType.Anonymous);
-#if (NET35 || NET40 || NET45)
-            connection.FieldValueEx<NetworkCredential>("directoryCredential")
-                .Should().Not.Be.Null();
-#endif
         }
 
         [TestMethod]

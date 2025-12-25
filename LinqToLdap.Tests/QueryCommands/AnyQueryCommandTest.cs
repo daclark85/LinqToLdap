@@ -26,15 +26,10 @@ namespace LinqToLdap.Tests.QueryCommands
                 .Returns("nm");
             var command = new AnyQueryCommand(options.Object, mapping.Object);
             object[] parameters;
-#if (!NET35 && !NET40 && !NET45)
+
             parameters = new object[] { "", new System.DirectoryServices.Protocols.DirectoryControl[0], System.DirectoryServices.Protocols.ResultCode.Success, "", new System.Uri[0] };
-#else
-            parameters = new object[] { xmlNode };
-#endif
+
             var response = typeof(SearchResponse).Create<SearchResponse>(parameters);
-#if (NET35 || NET40 || NET45)
-            response.SetFieldValue("result", ResultCode.Success);
-#endif
 
             connection.RequestResponses.Add(typeof(SearchRequest), response);
 
@@ -64,15 +59,11 @@ namespace LinqToLdap.Tests.QueryCommands
                 .Returns("nm");
             var command = new AnyQueryCommand(options.Object, mapping.Object);
             object[] parameters;
-#if (!NET35 && !NET40 && !NET45)
+
             parameters = new object[] { "", new System.DirectoryServices.Protocols.DirectoryControl[0], System.DirectoryServices.Protocols.ResultCode.Success, "", new System.Uri[0] };
-#else
-            parameters = new object[] { xmlNode };
-#endif
+
             var response = typeof(SearchResponse).Create<SearchResponse>(parameters);
-#if (NET35 || NET40 || NET45)
-            response.SetFieldValue("result", ResultCode.Success);
-#endif
+
             connection.RequestResponses.Add(typeof(SearchRequest), response);
 
             //act
@@ -101,25 +92,18 @@ namespace LinqToLdap.Tests.QueryCommands
                 .Returns("nm");
             var command = new AnyQueryCommand(options.Object, mapping.Object);
             object[] parameters;
-#if (!NET35 && !NET40 && !NET45)
+
             parameters = new object[] { "", new System.DirectoryServices.Protocols.DirectoryControl[0], System.DirectoryServices.Protocols.ResultCode.Success, "", new System.Uri[0] };
-#else
-            parameters = new object[] { xmlNode };
-#endif
+
             var response = typeof(SearchResponse).Create<SearchResponse>(parameters);
-#if (NET35 || NET40 || NET45)
-            response.SetFieldValue("result", ResultCode.Success);
-#endif
+
             connection.RequestResponses.Add(typeof(SearchRequest), response);
             var collection =
                 typeof(SearchResultEntryCollection).Create<SearchResultEntryCollection>();
             var entry = typeof(SearchResultEntry).Create<SearchResultEntry>("dn");
             collection.Call("Add", entry);
-#if (!NET35 && !NET40 && !NET45)
+
             response.Call("set_Entries", collection);
-#else
-            response.Call("SetEntries", collection);
-#endif
 
             //act
             var result = command.Execute(connection, SearchScope.Subtree, 1, true);
@@ -145,25 +129,17 @@ namespace LinqToLdap.Tests.QueryCommands
             var mapping = new Mock<IObjectMapping>();
             var command = new AnyQueryCommand(options.Object, mapping.Object);
             object[] parameters;
-#if (!NET35 && !NET40 && !NET45)
+
             parameters = new object[] { "", new System.DirectoryServices.Protocols.DirectoryControl[0], System.DirectoryServices.Protocols.ResultCode.Success, "", new System.Uri[0] };
-#else
-            parameters = new object[] { xmlNode };
-#endif
+
             var response = typeof(SearchResponse).Create<SearchResponse>(parameters);
-#if (NET35 || NET40 || NET45)
-            response.SetFieldValue("result", ResultCode.Success);
-#endif
             connection.RequestResponses.Add(typeof(SearchRequest), response);
             var collection =
                 typeof(SearchResultEntryCollection).Create<SearchResultEntryCollection>();
             var entry = typeof(SearchResultEntry).Create<SearchResultEntry>("dn");
             collection.Call("Add", entry);
-#if (!NET35 && !NET40 && !NET45)
+
             response.Call("set_Entries", collection);
-#else
-            response.Call("SetEntries", collection);
-#endif
 
             //act
             var result = command.Execute(connection, SearchScope.Subtree, 1, true, null, "nc");
