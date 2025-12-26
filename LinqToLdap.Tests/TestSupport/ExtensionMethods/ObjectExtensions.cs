@@ -120,6 +120,19 @@ namespace LinqToLdap.Tests.TestSupport.ExtensionMethods
         }
 
         /// <summary>
+        /// Gets the value of a field for an object without type casting.
+        /// </summary>
+        /// <param name="fieldName">The name of the field.</param>
+        /// <param name="source">The object to which the field belongs</param>
+        /// <returns>The value of the field as an object</returns>
+        public static object FieldValue(this object source, string fieldName)
+        {
+            FieldInfo field = GetField(fieldName, source.GetType());
+
+            return field.GetValue(source);
+        }
+
+        /// <summary>
         /// Gets the value of a field for an object.
         /// </summary>
         /// <typeparam name="TField">The type of the field to look for.</typeparam>

@@ -5,6 +5,7 @@ using LinqToLdap.Tests.TestSupport.ExtensionMethods;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SharpTestsEx;
 using System;
+using System.Diagnostics;
 using System.DirectoryServices.Protocols;
 using System.Linq;
 
@@ -305,5 +306,36 @@ namespace LinqToLdap.Tests
             task.Result.DistinguishedName.Should().Be.EqualTo(PersonInheritanceTest.NamingContext);
         }
 
+        [TestMethod]
+        [TestCategory("Integration")]
+        public void MethodCache_ContainsAllExpectedMethods()
+        {
+            var expectedMethods = new[]
+            {
+                ("AnyAsync", 3),
+                ("AnyAsync", 4),
+                ("ToListAsync", 3),
+                ("CountAsync", 3),
+                ("CountAsync", 4),
+                ("LongCountAsync", 3),
+                ("LongCountAsync", 4),
+                ("FirstAsync", 3),
+                ("FirstAsync", 4),
+                ("FirstOrDefaultAsync", 3),
+                ("FirstOrDefaultAsync", 4),
+                ("SingleAsync", 3),
+                ("SingleAsync", 4),
+                ("SingleOrDefaultAsync", 3),
+                ("SingleOrDefaultAsync", 4),
+                ("ListAttributesAsync", 4),
+                ("InPagesOfAsync", 4)
+            };
+
+            foreach (var (methodName, paramCount) in expectedMethods)
+            {
+                var method = QueryableAsyncExtensions.GetCachedMethod(methodName, paramCount);
+                Assert.IsNotNull(method, $"{methodName} with {paramCount} params not found");
+            }
+        }
     }
 }

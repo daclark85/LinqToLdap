@@ -14,23 +14,82 @@ namespace LinqToLdap.Async
     /// </summary>
     public static class QueryableAsyncExtensions
     {
-        private static readonly MethodInfo AnyAsyncMethod = typeof(QueryableAsyncExtensions).GetMethods().Single(x => x.Name == "AnyAsync" && x.GetParameters().Length == 3);
-        private static readonly MethodInfo AnyPredicateAsyncMethod = typeof(QueryableAsyncExtensions).GetMethods().Single(x => x.Name == "AnyAsync" && x.GetParameters().Length == 4);
-        private static readonly MethodInfo ToListAsyncMethod = typeof(QueryableAsyncExtensions).GetMethods().Single(x => x.Name == "ToListAsync" && x.GetParameters().Length == 3);
-        private static readonly MethodInfo CountAsyncMethod = typeof(QueryableAsyncExtensions).GetMethods().Single(x => x.Name == "CountAsync" && x.GetParameters().Length == 3);
-        private static readonly MethodInfo CountPredicateAsyncMethod = typeof(QueryableAsyncExtensions).GetMethods().Single(x => x.Name == "CountAsync" && x.GetParameters().Length == 4);
-        private static readonly MethodInfo LongCountAsyncMethod = typeof(QueryableAsyncExtensions).GetMethods().Single(x => x.Name == "LongCountAsync" && x.GetParameters().Length == 3);
-        private static readonly MethodInfo LongCountPredicateAsyncMethod = typeof(QueryableAsyncExtensions).GetMethods().Single(x => x.Name == "LongCountAsync" && x.GetParameters().Length == 4);
-        private static readonly MethodInfo FirstAsyncMethod = typeof(QueryableAsyncExtensions).GetMethods().Single(x => x.Name == "FirstAsync" && x.GetParameters().Length == 3);
-        private static readonly MethodInfo FirstPredicateAsyncMethod = typeof(QueryableAsyncExtensions).GetMethods().Single(x => x.Name == "FirstAsync" && x.GetParameters().Length == 4);
-        private static readonly MethodInfo FirstOrDefaultAsyncMethod = typeof(QueryableAsyncExtensions).GetMethods().Single(x => x.Name == "FirstOrDefaultAsync" && x.GetParameters().Length == 3);
-        private static readonly MethodInfo FirstOrDefaultPredicateAsyncMethod = typeof(QueryableAsyncExtensions).GetMethods().Single(x => x.Name == "FirstOrDefaultAsync" && x.GetParameters().Length == 4);
-        private static readonly MethodInfo SingleAsyncMethod = typeof(QueryableAsyncExtensions).GetMethods().Single(x => x.Name == "SingleAsync" && x.GetParameters().Length == 3);
-        private static readonly MethodInfo SinglePredicateAsyncMethod = typeof(QueryableAsyncExtensions).GetMethods().Single(x => x.Name == "SingleAsync" && x.GetParameters().Length == 4);
-        private static readonly MethodInfo SingleOrDefaultAsyncMethod = typeof(QueryableAsyncExtensions).GetMethods().Single(x => x.Name == "SingleOrDefaultAsync" && x.GetParameters().Length == 3);
-        private static readonly MethodInfo SingleOrDefaultPredicateAsyncMethod = typeof(QueryableAsyncExtensions).GetMethods().Single(x => x.Name == "SingleOrDefaultAsync" && x.GetParameters().Length == 4);
-        private static readonly MethodInfo ListAttributesAsyncMethod = typeof(QueryableAsyncExtensions).GetMethods().Single(x => x.Name == "ListAttributesAsync" && x.GetParameters().Length == 4);
-        private static readonly MethodInfo InPagesOfAsyncMethod = typeof(QueryableAsyncExtensions).GetMethods().Single(x => x.Name == "InPagesOfAsync" && x.GetParameters().Length == 4);
+        // ✅ OPTIMIZED: Single enumeration with efficient dictionary lookup
+        private static readonly Dictionary<string, MethodInfo> _methodCache = InitializeMethodCache();
+
+        private static Dictionary<string, MethodInfo> InitializeMethodCache()
+        {
+            // Get all public static methods once
+            var methods = typeof(QueryableAsyncExtensions).GetMethods(BindingFlags.Public | BindingFlags.Static);
+            
+            // Pre-allocate dictionary with exact capacity (16 methods)
+            var cache = new Dictionary<string, MethodInfo>(16, StringComparer.Ordinal);
+
+            // Group methods by name for faster lookup
+            var methodGroups = new Dictionary<string, List<MethodInfo>>(StringComparer.Ordinal);
+            
+            foreach (var method in methods)
+            {
+                if (!methodGroups.TryGetValue(method.Name, out var group))
+                {
+                    group = new List<MethodInfo>(2); // Most methods have 1-2 overloads
+                    methodGroups[method.Name] = group;
+                }
+                group.Add(method);
+            }
+
+            // Build cache with composite keys: "MethodName_ParamCount"
+            foreach (var kvp in methodGroups)
+            {
+                foreach (var method in kvp.Value)
+                {
+                    var paramCount = method.GetParameters().Length;
+                    var key = $"{kvp.Key}_{paramCount}";
+                    
+                    // Store only the first match (methods are unique by name+paramCount in this class)
+                    if (!cache.ContainsKey(key))
+                    {
+                        cache[key] = method;
+                    }
+                }
+            }
+
+            return cache;
+        }
+
+        // Helper method for cleaner lookups
+        internal static MethodInfo GetCachedMethod(string methodName, int parameterCount)
+        {
+            var key = $"{methodName}_{parameterCount}";
+            if (_methodCache.TryGetValue(key, out var method))
+            {
+                return method;
+            }
+            
+            // This should never happen if cache is initialized correctly
+            throw new InvalidOperationException(
+                $"Method '{methodName}' with {parameterCount} parameters not found in cache. " +
+                "This indicates a bug in QueryableAsyncExtensions initialization.");
+        }
+
+        // ✅ Replace all 16 static field initializers with efficient cache lookups
+        private static readonly MethodInfo AnyAsyncMethod = GetCachedMethod("AnyAsync", 3);
+        private static readonly MethodInfo AnyPredicateAsyncMethod = GetCachedMethod("AnyAsync", 4);
+        private static readonly MethodInfo ToListAsyncMethod = GetCachedMethod("ToListAsync", 3);
+        private static readonly MethodInfo CountAsyncMethod = GetCachedMethod("CountAsync", 3);
+        private static readonly MethodInfo CountPredicateAsyncMethod = GetCachedMethod("CountAsync", 4);
+        private static readonly MethodInfo LongCountAsyncMethod = GetCachedMethod("LongCountAsync", 3);
+        private static readonly MethodInfo LongCountPredicateAsyncMethod = GetCachedMethod("LongCountAsync", 4);
+        private static readonly MethodInfo FirstAsyncMethod = GetCachedMethod("FirstAsync", 3);
+        private static readonly MethodInfo FirstPredicateAsyncMethod = GetCachedMethod("FirstAsync", 4);
+        private static readonly MethodInfo FirstOrDefaultAsyncMethod = GetCachedMethod("FirstOrDefaultAsync", 3);
+        private static readonly MethodInfo FirstOrDefaultPredicateAsyncMethod = GetCachedMethod("FirstOrDefaultAsync", 4);
+        private static readonly MethodInfo SingleAsyncMethod = GetCachedMethod("SingleAsync", 3);
+        private static readonly MethodInfo SinglePredicateAsyncMethod = GetCachedMethod("SingleAsync", 4);
+        private static readonly MethodInfo SingleOrDefaultAsyncMethod = GetCachedMethod("SingleOrDefaultAsync", 3);
+        private static readonly MethodInfo SingleOrDefaultPredicateAsyncMethod = GetCachedMethod("SingleOrDefaultAsync", 4);
+        private static readonly MethodInfo ListAttributesAsyncMethod = GetCachedMethod("ListAttributesAsync", 4);
+        private static readonly MethodInfo InPagesOfAsyncMethod = GetCachedMethod("InPagesOfAsync", 4);
 
         /// <summary>
         /// Executes Any on <paramref name="source"/> in a <see cref="Task"/>.
