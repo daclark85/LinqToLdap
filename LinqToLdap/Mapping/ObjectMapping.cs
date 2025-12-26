@@ -26,35 +26,58 @@ namespace LinqToLdap.Mapping
             ObjectCategory = objectCategory;
             ObjectClasses = objectClass;
 
-            var localPropertyMappings = propertyMappings.ToList();
-            _propertyMappings = localPropertyMappings.ToDictionary(pm => pm.PropertyName).ToReadOnlyDictionary();
+            // Materialize once to avoid multiple enumerations
+            var localPropertyMappings = propertyMappings as List<IPropertyMapping> ?? propertyMappings.ToList();
 
-            try
+            // Build all dictionaries in a single pass
+            var propertyDict = new Dictionary<string, IPropertyMapping>(localPropertyMappings.Count);
+            var attributeDict = new Dictionary<string, IPropertyMapping>(localPropertyMappings.Count, StringComparer.OrdinalIgnoreCase);
+            var addDict = new Dictionary<string, IPropertyMapping>(localPropertyMappings.Count);
+            var updateDict = new Dictionary<string, IPropertyMapping>(localPropertyMappings.Count);
+
+            IPropertyMapping distinguishedName = null;
+            IPropertyMapping catchAll = null;
+
+            foreach (var pm in localPropertyMappings)
             {
-                _attributePropertyMappings =
-                localPropertyMappings.ToDictionary(pm => pm.AttributeName, pm => pm, StringComparer.OrdinalIgnoreCase).ToReadOnlyDictionary();
-            }
-            catch (ArgumentException ex)
-            {
-                throw new InvalidOperationException("The same attribute cannot be mapped for multiple properties.", ex);
+                propertyDict[pm.PropertyName] = pm;
+
+                // Check for attribute name conflicts during single pass
+                if (!attributeDict.TryAdd(pm.AttributeName, pm))
+                {
+                    throw new InvalidOperationException($"The same attribute '{pm.AttributeName}' cannot be mapped for multiple properties.");
+                }
+
+                if (pm.IsDistinguishedName)
+                {
+                    distinguishedName = pm;
+                }
+                else
+                {
+                    if (pm.ReadOnly == ReadOnly.OnUpdate || pm.ReadOnly == ReadOnly.Never)
+                    {
+                        addDict[pm.PropertyName] = pm;
+                    }
+
+                    if (pm.ReadOnly == ReadOnly.OnAdd || pm.ReadOnly == ReadOnly.Never)
+                    {
+                        updateDict[pm.PropertyName] = pm;
+                    }
+                }
+
+                if (typeof(IDirectoryAttributes).IsAssignableFrom(pm.PropertyType))
+                {
+                    catchAll = pm;
+                }
             }
 
+            _propertyMappings = propertyDict.ToReadOnlyDictionary();
+            _attributePropertyMappings = attributeDict.ToReadOnlyDictionary();
+            _propertyMappingsForAdd = addDict.ToReadOnlyDictionary();
+            _propertyMappingsForUpdate = updateDict.ToReadOnlyDictionary();
+            _distinguishedName = distinguishedName;
+            _catchAll = catchAll;
             _propertyNames = InitializePropertyNames();
-
-            _distinguishedName = localPropertyMappings.FirstOrDefault(p => p.IsDistinguishedName);
-
-            _catchAll =
-                localPropertyMappings.FirstOrDefault(p => typeof(IDirectoryAttributes).IsAssignableFrom(p.PropertyType));
-
-            _propertyMappingsForAdd = localPropertyMappings
-                .Where(x => x.ReadOnly == ReadOnly.OnUpdate || x.ReadOnly == ReadOnly.Never)
-                .Where(x => !x.IsDistinguishedName)
-                .ToDictionary(pm => pm.PropertyName).ToReadOnlyDictionary();
-
-            _propertyMappingsForUpdate = localPropertyMappings
-                .Where(x => x.ReadOnly == ReadOnly.OnAdd || x.ReadOnly == ReadOnly.Never)
-                .Where(x => !x.IsDistinguishedName)
-                .ToDictionary(pm => pm.PropertyName).ToReadOnlyDictionary();
 
             IncludeObjectCategory = includeObjectCategory;
             IncludeObjectClasses = includeObjectClasses;

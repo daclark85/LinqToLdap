@@ -97,8 +97,16 @@ namespace LinqToLdap.Mapping
         {
             ArgumentNullException.ThrowIfNull(assembly, nameof(assembly));
 
-            foreach (var type in assembly.GetTypes().Where(t => !t.IsInterface))
+            // Cache type lookups
+            var classMapGenericType = typeof(ClassMap<>);
+
+            // Pre-filter exportedTypes to reduce workload
+            foreach (var type in assembly.GetExportedTypes())
             {
+                // Skip abstract classes, interfaces, and generic type definitions
+                if (type.IsAbstract || type.IsInterface || type.IsGenericTypeDefinition)
+                    continue;
+
                 if (type.HasDirectorySchema())
                 {
                     IClassMap mapping;
@@ -114,16 +122,18 @@ namespace LinqToLdap.Mapping
 
                     Map(mapping);
                 }
-                else
+                else if (type.BaseType != null && !type.BaseType.IsGenericTypeDefinition)
                 {
+                    // Use reflection cache to avoid repeated lookups
                     var baseType = type.BaseType;
+
+                    // Optimize: check if any base type is ClassMap<> in one pass
                     while (baseType != null && baseType != typeof(object))
                     {
                         if (baseType.IsGenericType &&
-                            baseType.GetGenericTypeDefinition() == typeof(ClassMap<>))
+                            baseType.GetGenericTypeDefinition() == classMapGenericType)
                         {
                             var mapping = (IClassMap)Activator.CreateInstance(type);
-
                             Map(mapping);
                             break;
                         }
@@ -264,60 +274,78 @@ namespace LinqToLdap.Mapping
 
         private void MapSubTypes(IObjectMapping mapping)
         {
+            // Pre-calculate inheritance depth for the new mapping
+            int newMappingDepth = GetInheritanceDepth(mapping.Type);
 
             foreach (var objectMapping in _mappings)
             {
-                //check if already mapped instance is in new mappings inheritance chain
-                var alreadyMappedBaseType = objectMapping.Key;
-                while (alreadyMappedBaseType != null && alreadyMappedBaseType != typeof(object))
-                {
-                    if (alreadyMappedBaseType == mapping.Type)
-                    {
-                        ValidateObjectClasses(mapping, objectMapping.Value);
-                        mapping.AddSubTypeMapping(objectMapping.Value);
-                        break;
-                    }
-                    alreadyMappedBaseType = alreadyMappedBaseType.BaseType;
-                }
+                // Skip if types are unrelated
+                if (!AreTypesRelated(mapping.Type, objectMapping.Key))
+                    continue;
 
-                //check if new mapping is in the inheritance chain of an existing mapping
-                var newMappedBaseType = mapping.Type;
-                while (newMappedBaseType != null && newMappedBaseType != typeof(object))
+                // Check if already mapped instance is in new mappings inheritance chain
+                if (objectMapping.Key.IsAssignableFrom(mapping.Type))
                 {
-                    if (newMappedBaseType == objectMapping.Key)
-                    {
-                        ValidateObjectClasses(objectMapping.Value, mapping);
-                        objectMapping.Value.AddSubTypeMapping(mapping);
-                        break;
-                    }
-                    newMappedBaseType = newMappedBaseType.BaseType;
+                    ValidateObjectClasses(objectMapping.Value, mapping);
+                    objectMapping.Value.AddSubTypeMapping(mapping);
+                }
+                // Check if new mapping is in the inheritance chain of an existing mapping
+                else if (mapping.Type.IsAssignableFrom(objectMapping.Key))
+                {
+                    ValidateObjectClasses(mapping, objectMapping.Value);
+                    mapping.AddSubTypeMapping(objectMapping.Value);
                 }
             }
         }
 
+        private static bool AreTypesRelated(Type type1, Type type2)
+        {
+            return type1.IsAssignableFrom(type2) || type2.IsAssignableFrom(type1);
+        }
+
+        private static int GetInheritanceDepth(Type type)
+        {
+            int depth = 0;
+            var baseType = type.BaseType;
+            while (baseType != null && baseType != typeof(object))
+            {
+                depth++;
+                baseType = baseType.BaseType;
+            }
+            return depth;
+        }
+
         internal static void ValidateObjectClasses(IObjectMapping baseTypeMapping, IObjectMapping subTypeMapping)
         {
-            if (!(baseTypeMapping.ObjectClasses ?? new string[0]).Any())
+            var baseClasses = baseTypeMapping.ObjectClasses;
+            var subClasses = subTypeMapping.ObjectClasses;
+    
+            if (baseClasses == null || !baseClasses.Any())
             {
                 throw new InvalidOperationException(
                     $"In order to use subclass mapping {baseTypeMapping.Type.Name} must be mapped with objectClasses");
             }
-            if (!(subTypeMapping.ObjectClasses ?? new string[0]).Any())
+            if (subClasses == null || !subClasses.Any())
             {
                 throw new InvalidOperationException(
                     $"In order to use subclass mapping {subTypeMapping.Type.Name} must be mapped with objectClasses");
             }
 
-            var currentMappings =
-                new[] { baseTypeMapping }.Union(baseTypeMapping.HasSubTypeMappings
-                    ? baseTypeMapping.SubTypeMappings
-                    : (IList<IObjectMapping>)new List<IObjectMapping>());
+            // Avoid allocating arrays for null coalescing
+            var currentMappings = baseTypeMapping.HasSubTypeMappings
+                ? baseTypeMapping.SubTypeMappings.Prepend(baseTypeMapping)
+                : new[] { baseTypeMapping };
 
-            if (currentMappings.Any(objectMapping => objectMapping.ObjectClasses.OrderBy(x => x)
-                .SequenceEqual(subTypeMapping.ObjectClasses.OrderBy(x => x),
-                    StringComparer.InvariantCultureIgnoreCase)))
+            // Use HashSet for O(1) lookups instead of OrderBy + SequenceEqual
+            var subClassSet = new HashSet<string>(subClasses, StringComparer.OrdinalIgnoreCase);
+    
+            foreach (var objectMapping in currentMappings)
             {
-                throw new InvalidOperationException($"All sub types of {baseTypeMapping.Type.Name} must have a unique sequence of objectClasses.");
+                if (objectMapping.ObjectClasses.Count() == subClassSet.Count &&
+                    objectMapping.ObjectClasses.All(oc => subClassSet.Contains(oc)))
+                {
+                    throw new InvalidOperationException($"All sub types of {baseTypeMapping.Type.Name} must have a unique sequence of objectClasses.");
+                }
             }
         }
     }
