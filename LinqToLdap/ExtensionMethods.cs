@@ -1,6 +1,7 @@
 ﻿using LinqToLdap.Logging;
 using LinqToLdap.Mapping;
 using System;
+using System.Buffers;
 using System.Collections;
 using System.Collections.Generic;
 using System.DirectoryServices.Protocols;
@@ -35,8 +36,17 @@ namespace LinqToLdap
         /// <returns></returns>
         public static string ToStringOctet(this byte[] bytes)
         {
+            Span<char> chars = stackalloc char[bytes.Length * 3];
+            int pos = 0;
 
-            return @"\" + string.Join(@"\", bytes.Select(b => b.ToString("x2")));
+            foreach (var b in bytes)
+            {
+                chars[pos++] = '\\';
+                b.TryFormat(chars[pos..], out int written, "x2");
+                pos += written;
+            }
+
+            return new string(chars[..pos]);
         }
 
         #region DateTime Extensions
@@ -119,6 +129,8 @@ namespace LinqToLdap
             }
         }
 
+        // Pre-compute the search logic for hardware acceleration (SIMD)
+        private static readonly SearchValues<char> SpecialChars = SearchValues.Create("\\*()&:|~! \0");
         /// <summary>
         /// Cleans special characters for an LDAP filter.  This method cannot clean a distinguished name.
         /// </summary>
@@ -126,57 +138,68 @@ namespace LinqToLdap
         /// <returns></returns>
         public static string CleanFilterValue(this string value)
         {
-            var sb = new StringBuilder();
-            foreach (var curChar in value)
+            if (string.IsNullOrEmpty(value)) return value;
+
+            ReadOnlySpan<char> span = value.AsSpan();
+            int firstIndex = span.IndexOfAny(SpecialChars);
+
+            // FAST PATH: If no special characters found, return original string (Zero Allocation)
+            if (firstIndex == -1) return value;
+
+            // SLOW PATH: We need to escape. 
+            // Estimate buffer size: worst case is 3x the original length.
+            int initialSize = value.Length * 3;
+
+            // Use stackalloc for strings up to ~256 chars to avoid heap allocation
+            char[]? arrayFromPool = null;
+            Span<char> buffer = initialSize <= 512
+                ? stackalloc char[512]
+                : (arrayFromPool = ArrayPool<char>.Shared.Rent(initialSize));
+
+            try
             {
-                switch (curChar)
+                int pos = 0;
+
+                // Copy the clean part before the first special character
+                span[..firstIndex].CopyTo(buffer);
+                pos = firstIndex;
+
+                // Process the rest
+                for (int i = firstIndex; i < span.Length; i++)
                 {
-                    case '\\':
-                        sb.Append("\\5c");
-                        break;
+                    char c = span[i];
+                    string? replacement = c switch
+                    {
+                        '\\' => "\\5c",
+                        '*' => "\\2a",
+                        '(' => "\\28",
+                        ')' => "\\29",
+                        '&' => "\\26",
+                        ':' => "\\3a",
+                        '|' => "\\7c",
+                        '~' => "\\7e",
+                        '!' => "\\21",
+                        '\0' => "\\00",
+                        _ => null
+                    };
 
-                    case '*':
-                        sb.Append("\\2a");
-                        break;
-
-                    case '(':
-                        sb.Append("\\28");
-                        break;
-
-                    case ')':
-                        sb.Append("\\29");
-                        break;
-
-                    case '&':
-                        sb.Append("\\26");
-                        break;
-
-                    case ':':
-                        sb.Append("\\3a");
-                        break;
-
-                    case '|':
-                        sb.Append("\\7c");
-                        break;
-
-                    case '~':
-                        sb.Append("\\7e");
-                        break;
-
-                    case '!':
-                        sb.Append("\\21");
-                        break;
-
-                    case '\u0000':
-                        sb.Append("\\00");
-                        break;
-
-                    default:
-                        sb.Append(curChar);
-                        break;
+                    if (replacement != null)
+                    {
+                        replacement.AsSpan().CopyTo(buffer[pos..]);
+                        pos += 3;
+                    }
+                    else
+                    {
+                        buffer[pos++] = c;
+                    }
                 }
+
+                return new string(buffer[..pos]);
             }
-            return sb.ToString();
+            finally
+            {
+                if (arrayFromPool != null) ArrayPool<char>.Shared.Return(arrayFromPool);
+            }
         }
 
         /// <summary>

@@ -21,7 +21,7 @@ namespace LinqToLdap.Async
         /// <summary>
         /// Sends a directory request asynchronously using the APM-to-TAP pattern.
         /// </summary>
-        private static Task<TResponse> SendRequestAsync<TResponse>(
+        public static Task<TResponse> SendRequestAsync<TResponse>(
             this LdapConnection connection,
             DirectoryRequest request,
             PartialResultProcessing resultProcessing,

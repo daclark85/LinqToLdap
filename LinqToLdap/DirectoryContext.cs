@@ -303,7 +303,7 @@ namespace LinqToLdap
 
                 SearchResponse response;
 
-                response = await Task.Run(() => _connection.SendRequest(request) as SearchResponse, cancellationToken).ConfigureAwait(false);
+                response = await LdapConnectionAsyncExtensions.SendRequestAsync<SearchResponse>(_connection, request, resultProcessing, cancellationToken).ConfigureAwait(false);
                 response.AssertSuccess();
                 var entry = (response.Entries.Count == 0
                                 ? transformer.Default()
@@ -1238,7 +1238,7 @@ namespace LinqToLdap
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
 
-            return await Task.Run(() => _connection.SendRequest(request) as DirectoryResponse, cancellationToken).ConfigureAwait(false);
+            return await LdapConnectionAsyncExtensions.SendRequestAsync<DirectoryResponse>(_connection, request, resultProcessing, cancellationToken).ConfigureAwait(false);
         }
         private async Task<string> UpdateEntryAsync<T>(T entry, string distinguishedName = null, DirectoryControl[] controls = null,
             PartialResultProcessing resultProcessing = LdapConfiguration.DefaultAsyncResultProcessing, CancellationToken cancellationToken = default)
@@ -1299,7 +1299,7 @@ namespace LinqToLdap
 
                 ModifyResponse response = null;
 
-                response = await Task.Run(() => _connection.SendRequest(request) as ModifyResponse, cancellationToken).ConfigureAwait(false);
+                response = await LdapConnectionAsyncExtensions.SendRequestAsync<ModifyResponse>(_connection, request, resultProcessing, cancellationToken).ConfigureAwait(false);
 
                 response.AssertSuccess();
 
@@ -1375,7 +1375,7 @@ namespace LinqToLdap
                 if (Logger != null && Logger.TraceEnabled) Logger.Trace(request.ToLogString());
 
                 AddResponse response = null;
-                response = await Task.Run(() => _connection.SendRequest(request) as AddResponse, cancellationToken).ConfigureAwait(false);
+                response = await LdapConnectionAsyncExtensions.SendRequestAsync<AddResponse>(_connection, request, resultProcessing, cancellationToken).ConfigureAwait(false);
 
                 response.AssertSuccess();
 

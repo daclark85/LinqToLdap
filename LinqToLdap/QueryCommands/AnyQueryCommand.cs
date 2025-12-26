@@ -1,8 +1,11 @@
-﻿using LinqToLdap.Logging;
+﻿using LinqToLdap.Async;
+using LinqToLdap.Logging;
 using LinqToLdap.Mapping;
 using LinqToLdap.QueryCommands.Options;
 using System;
+using System.Data.Common;
 using System.DirectoryServices.Protocols;
+using System.Threading;
 
 namespace LinqToLdap.QueryCommands
 {
