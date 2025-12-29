@@ -1,4 +1,5 @@
 ﻿using System;
+using System.DirectoryServices.Protocols;
 using System.Linq;
 
 namespace LinqToLdap.Mapping
@@ -62,5 +63,10 @@ namespace LinqToLdap.Mapping
         /// Indicates if this class should flatten its hierarchy when mapping. Flattened mappings will include inherited properties, but will not work with queries for subtypes or base types.
         /// </summary>
         public bool WithoutSubTypeMapping { get; set; }
+
+        /// <summary>
+        /// Indicates if the security descriptor should be included in the mapping.
+        /// </summary>
+        public SecurityMasks IncludeSecurityMasks { get; set; } = SecurityMasks.None;
     }
 }

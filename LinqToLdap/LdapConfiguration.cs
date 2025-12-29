@@ -24,7 +24,7 @@ namespace LinqToLdap
         /// https://github.com/dotnet/corefx/issues/34730
         /// https://docs.microsoft.com/en-us/dotnet/api/system.directoryservices.protocols.partialresultprocessing?view=netframework-4.8
         /// </summary>
-        public const PartialResultProcessing DefaultAsyncResultProcessing = PartialResultProcessing.ReturnPartialResults;
+        public const PartialResultProcessing DefaultAsyncResultProcessing = PartialResultProcessing.NoPartialResultSupport;
 
 
         private int _serverMaxPageSize = 500;

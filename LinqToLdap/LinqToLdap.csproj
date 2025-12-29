@@ -5,7 +5,7 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageId>LinqToLdap</PackageId>
-    <Version>1.0.0</Version>
+    <Version>1.0.11</Version>
     <Authors>daclark85</Authors>
     <Company>daclark85</Company>
     <Description>LINQ provider built on top of System.DirectoryServices.Protocols for querying and updating LDAP servers.</Description>
@@ -26,6 +26,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.1" />
     <PackageReference Include="System.DirectoryServices.Protocols" Version="10.0.1" />
   </ItemGroup>
 

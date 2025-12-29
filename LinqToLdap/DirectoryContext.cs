@@ -297,6 +297,12 @@ namespace LinqToLdap
                     request.Attributes.Add(property);
                 }
 
+                // ✅ ADD THIS: Include security descriptor control if configured
+                if (mapping.IncludeSecurityMasks != SecurityMasks.None)
+                {
+                    request.Controls.Add(new SecurityDescriptorFlagControl(mapping.IncludeSecurityMasks));
+                }
+
                 var transformer = new ResultTransformer(mapping.Properties, mapping);
 
                 if (Logger != null && Logger.TraceEnabled) Logger.Trace(request.ToLogString());
